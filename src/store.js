@@ -18,7 +18,7 @@ let middlewares = [
 
 // add the freeze dev middleware
 if (process.env.NODE_ENV !== 'production') {
-  middlewares.push(freeze)
+  middlewares.push(freeze);
   middlewares.push(loggerMiddleware)
 }
 

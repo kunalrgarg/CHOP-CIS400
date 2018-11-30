@@ -11,6 +11,6 @@ const routes = (
       <Route path='/about' component={About} />
     </Switch>
   </App>
-)
+);
 
 export { routes };
