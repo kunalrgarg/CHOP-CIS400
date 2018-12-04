@@ -4,7 +4,7 @@ import * as RB from 'react-bootstrap';
 class Index extends Component {
 
   render() {
-    const {updateSearchTerm, requestSearch, searchTerm } = this.props;
+    const { updateSearchTerm, requestSearch, searchTerm } = this.props;
     return (
       <div>
         <RB.Grid>
