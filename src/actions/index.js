@@ -6,6 +6,11 @@ export const updateSearchTerm = (newSearchTerm) => ({
   newSearchTerm
 });
 
+export const updateSearchType = (newSearchType) => ({
+    type: 'UPDATE_SEARCH_TYPE',
+    newSearchType
+});
+
 export const requestSearchSent = () => ({
   type: 'REQUEST_SEARCH_SENT'
 });
@@ -18,10 +23,10 @@ export const requestSearchSuccess = (results) => ({
   type: 'REQUEST_SEARCH_SUCCESS', results
 });
 
-export function requestSearch(searchTerm) {
+export function requestSearch(searchTerm, searchType) {
   return function(dispatch) {
     dispatch(requestSearchSent());
-    return fetch(`${config.endpoint}search/mesh/${searchTerm}`)
+    return fetch(`${config.endpoint}search/mesh/${searchTerm}/${searchType}`)
       .then(response => response.json()
         .then(json => ({
           status: response.status,
@@ -33,3 +38,5 @@ export function requestSearch(searchTerm) {
       }, err => { dispatch(requestSearchFailed(err))  })
   }
 }
+
+
