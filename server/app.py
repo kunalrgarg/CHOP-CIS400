@@ -155,7 +155,7 @@ def search_by_title(title):
     return jsonify(result)
 
 
-@app.route('/api/publications/<query>')
+@app.route('/api/search/<query>')
 def search_for_publications(query):
     '''Route to search for publication with query by either MeSH term or Title'''
     searchword = request.args.get('type', '').lower()
