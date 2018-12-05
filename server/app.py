@@ -85,18 +85,30 @@ def search_by_mesh(term):
     '''Search for publications by MeSH Term(s)'''
     '''Returns all publications that have a matching MeSH term and all of their authors'''
     term = term.lower()
+    mesh_num = ''
+    # Number, Desc, Primary_MeSH
+    with open('server/template/2017MeshTree.csv') as mesh_tree_csv:
+        csv_reader = csv.reader(mesh_tree_csv, delimiter=',')
+        for row in csv_reader:
+            if term == row[2].lower():
+                mesh_num = row[0]
+                break
+
+    if mesh_num == '':
+        return jsonify([])
+
     publication_ids = []
-    # Desc,PMID,Primary_MeSH
+    # Desc, Num, PMID, Primary_MeSH
     with open('server/record_results/medical_record.csv') as mesh_csv:
         csv_reader = csv.reader(mesh_csv, delimiter=',')
         for row in csv_reader:
-            # if query matches MeSH term or ID
-            if term == row[2].lower():
-                publication_ids.append(row[1])
+            # if query is the term or is a parent of the term
+            if mesh_num in row[1]:
+                publication_ids.append(row[2])
     
     publications = []
     author_names = set()
-    # PMID,Title,Abstract,Year,Month,author_list,subject_list,date
+    # PMID, Title, Abstract, Year, Month, author_list, subject_list, date
     with open('server/record_results/paper_record.csv') as pub_csv:
         csv_reader = csv.reader(pub_csv, delimiter=',')
         for row in csv_reader:

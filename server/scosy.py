@@ -14,14 +14,16 @@ def obtain_descriptions():
     mesh_tree_file_object = open('template/2017MeshTree.csv')
     file_reader = csv.reader(mesh_tree_file_object, delimiter=',')
     mesh_description_dict = dict()
+    mesh_number_dict = dict()
 
     logging.getLogger('regular').info('processing each record and obtaining relevant information')
     for line in file_reader:
         # split_line[0] = Number, split_line[1] = Description and split_line[2] = MESH
         mesh_description_dict[line[2]] = line[1]
+        mesh_number_dict[line[1]] = line[0]
     mesh_tree_file_object.close()
     
-    return mesh_description_dict
+    return mesh_description_dict, mesh_number_dict
 
 
 def assign_roles(author_list):
@@ -191,7 +193,7 @@ def main():
         fetch_records = parse(handle=records_handle)
 
         # initializing variables
-        mesh_description_dict = obtain_descriptions()
+        mesh_description_dict, mesh_number_dict = obtain_descriptions()
 
         # contains all the metadata elements on the author level: PubMed unique Identifier number(PMID), AuthorID (as a
         # (CA) Ordinary Author (OA) or Principal Author (PA) and the author's affiliation
@@ -204,7 +206,7 @@ def main():
                                                 'date'])
         # contains all the metadata of the medical information: PubMed unique Identifier number(PMID), Primary Medical
         # Subject Header (MESH) and the description ID
-        medical_record_df = pd.DataFrame(columns=['PMID', 'Desc', 'Primary_MeSH'])
+        medical_record_df = pd.DataFrame(columns=['PMID', 'Desc', 'Primary_MeSH', 'Num'])
 
         title_list = list()
         abstract_list = list()
@@ -241,6 +243,7 @@ def main():
                 chop_organization, penn_organization = assign_organization(affiliations)
 
                 mesh_description = ''
+                mesh_number = ''
                 if mesh_term is None:
                     mesh_term = ''
                 else:
@@ -249,7 +252,8 @@ def main():
 
                 # output information
                 if mesh_description:
-                    row = pd.DataFrame([[pmid, term, mesh_description]], columns=['PMID', 'Primary_MeSH', 'Desc'])
+                    mesh_number = mesh_number_dict[mesh_description]
+                    row = pd.DataFrame([[pmid, term, mesh_description, mesh_number]], columns=['PMID', 'Primary_MeSH', 'Desc', 'Num'])
                     medical_record_df = medical_record_df.append(row, ignore_index=True)
 
                 for author_index, organizations in enumerate(zip(chop_organization, penn_organization)):
