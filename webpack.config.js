@@ -4,27 +4,27 @@ const CleanWebpackPlugin = require('clean-webpack-plugin');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const merge = require('webpack-merge');
-const webpack = require('webpack'); 
+const webpack = require('webpack');
 const path = require('path');
 
 const paths = {
   src: path.resolve(__dirname, 'src'),
   build: path.resolve(__dirname, 'build')
-}
+};
 
 const uglifyConfig = {
   sourceMap: false,
   warnings: false,
   mangle: true,
   minimize: true
-}
+};
 
 const htmlConfig = {
   template: path.join(paths.src, 'index.html'),
   minify : {
     collapseWhitespace: true
   }
-}
+};
 
 const common = {
   devServer: {
@@ -96,7 +96,7 @@ const devSettings = {
     new webpack.HotModuleReplacementPlugin(),
     new CleanWebpackPlugin([paths.build]),
   ]
-}
+};
 
 const prodSettings = {
   devtool: 'source-map',
@@ -113,7 +113,7 @@ const prodSettings = {
     new OptimizeCssAssetsPlugin(),
     new webpack.optimize.OccurrenceOrderPlugin(),
   ]
-}
+};
 
 /**
 * Exports

@@ -1,4 +1,12 @@
-.DS_Store
+*.swp
+*.pem
+*.pyc
+*.DS_Store
+.cache
+node_modules
+build
+__pycache__
+
 .idea/
 
 # Logs
