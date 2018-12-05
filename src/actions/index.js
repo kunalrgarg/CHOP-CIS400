@@ -26,7 +26,7 @@ export const requestSearchSuccess = (results) => ({
 export function requestSearch(searchTerm, searchType) {
   return function(dispatch) {
     dispatch(requestSearchSent());
-    return fetch(`${config.endpoint}search/${searchTerm}&type=${searchType}`)
+    return fetch(`${config.endpoint}search/${searchTerm}?type=${searchType}`)
       .then(response => response.json()
         .then(json => ({
           status: response.status,
