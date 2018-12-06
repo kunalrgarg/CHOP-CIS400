@@ -3,169 +3,116 @@ from flask import Flask, jsonify, send_from_directory, request
 from flask_cors import CORS
 import csv
 import os
+import utils.records as records
 
 '''Main wrapper for app creation'''
 app = Flask(__name__, static_folder='../build')
 CORS(app)
 
 ##
-# API routes
+# API routes helpers
 ##
 
-def get_author_data(names):
-    '''Returns a list of author data in a dictionary'''
-    
-    # PMID,Author,author_chop,author_penn,Role,AffiliationInfo
+def get_author_data(publications):
+    '''Returns a list of author data as a dictionary'''
+
+    author_names = set()
+    for publication in publications:
+        for name in publication['author_list']:
+            author_names.add(name)
+
     result = []
-    with open('server/record_results/author_record.csv') as author_csv:
-        csv_reader = csv.reader(author_csv, delimiter=',')
-        for row in csv_reader:
-            for name in names:
-                if name == row[1]:
-                    d = {}
-                    d['id'] = row[0]            # author's PMID
-                    d['name'] = row[1]          # author's name
-                    d['chop'] = row[2]          # 1 if author is affiliated with CHOP, 0 otherwise
-                    d['penn'] = row[3]          # 1 if author is affiliated with Penn, 0 otherwise
-                    d['role'] = row[4]          # author's role (CA = Chief Author, OA = Ordinary Author, PI = Principal Investigator)
-                    d['affiliation'] = row[5]   # list of author's affiliations
-                    result.append(d)
-                    break
+    for author in records.get_author_records():
+        for name in author_names:
+            if name == author.name:
+                result.append(author.to_dict())
+
     return result
 
 
 def search_by_author(name):
     '''Search for publications by Author Name or substring of Name'''
     '''Returns all authors whose name contain the parameter name and all of their publications'''
-    name = name.lower()
-    name_split = name.split(' ')
+
+    name_split = name.lower().split(' ')
     authors = []
-    # PMID,Author,author_chop,author_penn,Role,AffiliationInfo
-    with open('server/record_results/author_record.csv') as author_csv:
-        csv_reader = csv.reader(author_csv, delimiter=',')
-        for row in csv_reader:
-            match = True
-            author_name = row[1].lower()
-            for part in name_split:
-                match &= part in author_name
-            if match:
-                d = {}
-                d['id'] = row[0]            # author's PMID
-                d['name'] = row[1]          # author's name
-                d['chop'] = row[2]          # 1 if author is affiliated with CHOP, 0 otherwise
-                d['penn'] = row[3]          # 1 if author is affiliated with Penn, 0 otherwise
-                d['role'] = row[4]          # author's role (CA = Chief Author, OA = Ordinary Author, PI = Principal Investigator)
-                d['affiliation'] = row[5]   # list of author's affiliations
-                authors.append(d)
+    for author in records.get_author_records():
+        match = True
+        # split name so that name order does not matter for search (last, first vs first last)
+        for part in name_split:
+            match &= part in author.name
+        if match:
+            authors.append(author.to_dict())
 
     publications = []
     # PMID,Title,Abstract,Year,Month,author_list,subject_list,date
-    with open('server/record_results/paper_record.csv') as pub_csv:
-        csv_reader = csv.reader(pub_csv, delimiter=',')
-        for row in csv_reader:
-            author_list = row[5]
-            for author in authors:
-                if author['name'] in author_list:
-                    d = {}
-                    d['id'] = row[0]
-                    d['title'] = row[1]
-                    d['abstract'] = row[2]
-                    d['year'] = row[3]
-                    d['month'] = row[4]
-                    d['author_list'] = row[5]
-                    d['subject_list'] = row[6]
-                    d['date'] = row[7]
-                    publications.append(d)
-                    break
+    for publication in records.get_publication_records():
+        for author in authors:
+            if author.name in publication.author_list:
+                publications.append(publication.to_dict())
+                break
 
-    result = {'authors': authors, 'publications': publications}
+    result = { 'authors': authors, 'publications': publications }
     return jsonify(result)
+
 
 def search_by_mesh(term):
     '''Search for publications by MeSH Term(s)'''
     '''Returns all publications that have a matching MeSH term and all of their authors'''
+
     term = term.lower()
     mesh_num = ''
-    # Number, Desc, Primary_MeSH
-    with open('server/template/2017MeshTree.csv') as mesh_tree_csv:
-        csv_reader = csv.reader(mesh_tree_csv, delimiter=',')
-        for row in csv_reader:
-            if term == row[2].lower():
-                mesh_num = row[0]
-                break
+    for mesh in records.get_mesh_tree():
+        if term == mesh.term.lower():
+            mesh_num = mesh.num
 
     if mesh_num == '':
         return jsonify([])
 
-    publication_ids = []
-    # Desc, Num, PMID, Primary_MeSH
-    with open('server/record_results/medical_record.csv') as mesh_csv:
-        csv_reader = csv.reader(mesh_csv, delimiter=',')
-        for row in csv_reader:
-            # if query is the term or is a parent of the term
-            if mesh_num in row[1]:
-                publication_ids.append(row[2])
-    
     publications = []
-    author_names = set()
-    # PMID, Title, Abstract, Year, Month, author_list, subject_list, date
-    with open('server/record_results/paper_record.csv') as pub_csv:
-        csv_reader = csv.reader(pub_csv, delimiter=',')
-        for row in csv_reader:
-            for id in publication_ids:
-                if row[0] == id:
-                    # create a dictionary of publication data
-                    d = {}
-                    d['id'] = row[0]
-                    d['title'] = row[1]
-                    d['abstract'] = row[2]
-                    d['year'] = row[3]
-                    d['month'] = row[4]
-                    d['author_list'] = row[5]
-                    d['subject_list'] = row[6]
-                    d['date'] = row[7]
-                    # add the dictionary to our list of publications
-                    publications.append(d)
-                    # add the author names to the author name set
-                    for name in row[5].split(';'):
-                        author_names.add(name)
-                    break
+    for publication in records.get_publication_records():
+        if mesh_num in publication.mesh.num:
+            publications.append(publication.to_dict())
     
     # get author data
-    authors = get_author_data(author_names)
-
-    result = {'authors': authors, 'publications': publications}
+    authors = get_author_data(publications)
+    result = { 'authors': authors, 'publications': publications }
     return jsonify(result)
 
 
 def search_by_title(title):
     '''Search for publications by Title'''
-    '''Returns all publications whose title contains the parameter title and all their authors'''
+    '''Returns publications that contain the Keyword in their Title'''
+
     title = title.lower()
     publications = []
-    author_names = set()
-    # PMID,Title,Abstract,Year,Month,author_list,subject_list,date
-    with open('server/record_results/paper_record.csv') as pub_csv:
-        csv_reader = csv.reader(pub_csv, delimiter=',')
-        for row in csv_reader:
-            if title in row[1].lower():
-                d = {}
-                d['id'] = row[0]
-                d['title'] = row[1]
-                d['abstract'] = row[2]
-                d['year'] = row[3]
-                d['month'] = row[4]
-                d['author_list'] = row[5]
-                d['subject_list'] = row[6]
-                d['date'] = row[7]
-                publications.append(d)
-                for name in row[5].split(';'):
-                    author_names.add(name)
+    for publication in records.get_publication_records():
+            if title in publication.title.lower():
+                publications.append(publication.to_dict())
 
-    authors = get_author_data(author_names)
+    authors = get_author_data(publications)
+    result = { 'authors': authors, 'publications': publications }
+    return jsonify(result)
+
+
+def search_by_keyword(keyword):
+    '''Search for publications by Keyword'''
+    '''Returns publications that contain the Keyword in their Title, Abstract, or Subject List'''
+
+    keyword = keyword.lower()
+    publications = []
+    for publication in records.get_publication_records():
+        if keyword in publication.title or keyword in publication.subject_list or keyword in publication.abstract:
+            publications.append(publication.to_dict())
+
+    authors = get_author_data(publications)
     result = {'authors': authors, 'publications': publications}
     return jsonify(result)
 
+
+##
+# API Routes
+##
 
 @app.route('/api/search/<query>')
 def search_for_publications(query):
@@ -177,6 +124,8 @@ def search_for_publications(query):
         return search_by_title(query)
     elif searchword == 'author':
         return search_by_author(query)
+    elif searchword == 'keyword':
+        return search_by_keyword(query)
     return jsonify([])
 
 
