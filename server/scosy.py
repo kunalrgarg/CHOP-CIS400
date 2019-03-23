@@ -277,12 +277,13 @@ def main():
                     mesh_description, term = convert_mesh_description(mesh_description_dict, mesh_term)
                     mesh_term = ';'.join(mesh_term)
 
-                # output information
+                # mesh information
                 if mesh_description:
                     mesh_number = mesh_number_dict[mesh_description]
                     row = pd.DataFrame([[pmid, term, mesh_description, mesh_number]], columns=['PMID', 'Primary_MeSH', 'Desc', 'Num'])
                     medical_record_df = medical_record_df.append(row, ignore_index=True)
 
+                # author information
                 for author_index, organizations in enumerate(zip(chop_organization, penn_organization)):
                     # check if the author belongs to either CHOP or PENN
                     if 1 in organizations:
@@ -294,17 +295,18 @@ def main():
                                 a.combine(author)
                                 break
                         if not exists:
-                            author_list.append(author)
+                            author_list = author_list.append(author)
 
                 authors = ';'.join(authors)
 
+                # publication information
                 row = pd.DataFrame([[pmid, title, abstract, year, month, authors, mesh_term, date]],
-                                   columns=['PMID', 'Title', 'Abstract', 'Year', 'Month', 'author_list', 'subject_list',
-                                            'date'])
+                    columns=['PMID', 'Title', 'Abstract', 'Year', 'Month', 'author_list', 'subject_list',
+                            'date'])
                 paper_record_df = paper_record_df.append(row)
 
-                title_list.append(title)
-                abstract_list.append(abstract)
+                title_list = title_list.append(title)
+                abstract_list = abstract_list.append(abstract)
 
             except Exception as e:
                 msg = 'Error while processing PMID={0}'.format(pmid)
