@@ -87,6 +87,8 @@ def assign_organization(affiliation_list):
     :param affiliation_list: a list of all the affiliations of the authors
     :return: chop_list, penn_list: lists with whether the author belong to the CHOP or PENN organization
     """
+    if affiliation_list is None:
+        return [], []
     # initialize CHOP and PENN authors' organization to None = 0
     chop_list = [0] * len(affiliation_list)
     penn_list = [0] * len(affiliation_list)
@@ -314,9 +316,11 @@ def main():
 
             except Exception as e:
                 msg = 'Error while processing PMID={0}'.format(pmid)
-                logging.getLogger('regular').debug(msg)
+                # logging.getLogger('regular').debug(msg)
+                logging.getLogger('regular').info(msg)
                 msg = 'Exception message = {0}'.format(e)
-                logging.getLogger('regular').debug(msg)
+                # logging.getLogger('regular').debug(msg)
+                logging.getLogger('regular').info(msg)
 
         # authors to pd.dataFrame
         for author in author_list:
