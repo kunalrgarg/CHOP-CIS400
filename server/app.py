@@ -49,17 +49,27 @@ def search_by_author(name):
     '''Search for publications by Author Name or substring of Name'''
     '''Returns all authors whose name contain the parameter name and all of their publications'''
 
-    name_split = name.lower().split(' ')
+    name_split = name.replace(',', '').lower().split(' ')
     authors = []
+
+    publication_records = records.get_publication_records()
+    publications = []
     for author in records.get_author_records():
         match = True
         # split name so that name order does not matter for search (last, first vs first last)
         for part in name_split:
-            match &= part in author.name
+            if part not in author.name.lower():
+                match = False
+                break
         if match:
             authors.append(author.to_dict())
+            # for pmid in author.ids:
+            #     for publication in publication_records:
+            #         if pmid == publication.id:
+            #             if publication not in publications:
+            #                 publications.append(publication)
+            #             break
 
-    publications = []
     # PMID,Title,Abstract,Year,Month,author_list,subject_list,date
     for publication in records.get_publication_records():
         for author in authors:
@@ -85,7 +95,7 @@ def search_by_mesh(term):
             mesh_num = mesh.num
 
     if mesh_num == '':
-        return jsonify([])
+        return jsonify([{'statistics': [], 'authors': [], 'publications': []}])
 
     publications = []
     for publication in records.get_publication_records():
@@ -137,6 +147,20 @@ def search_by_keyword(keyword):
     return jsonify(result)
 
 
+def search_by_pmid(pmid):
+    '''Search for a publication by its PMID'''
+    '''Returns the publication (if found) and its authors'''
+
+    for p in records.get_publication_records():
+        if pmid == p.id:
+            publication = p.to_dict() 
+            authors = get_author_data([publication])
+            authors = sorted(authors, key=lambda author: author['name'])
+            statisitcs = get_statistics(authors, [publication])
+            result = { 'statistics': statisitcs, 'authors': authors, 'publications': [publication] }
+            return jsonify(result)
+    return jsonify([{'statistics': [], 'authors': [], 'publications': []}])
+
 ##
 # API Routes
 ##
@@ -153,6 +177,8 @@ def search_for_publications(query):
         return search_by_author(query)
     elif searchword == 'keyword':
         return search_by_keyword(query)
+    elif searchword == 'pmid':
+        return search_by_pmid(query)
     return jsonify([{'statistics': [], 'authors': [], 'publications': []}])
 
 

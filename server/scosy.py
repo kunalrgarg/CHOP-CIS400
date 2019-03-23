@@ -7,6 +7,32 @@ import argparse
 import pandas as pd
 import pandas.io.formats.excel
 
+class Author:
+    def __init__(self, name, pmid, role, penn, chop, affiliations):
+        self.name = name
+        self.pmids = [pmid]
+        self.roles = [role]
+        self.penn = penn
+        self.chop = chop
+        self.affiliations = affiliations
+    
+    # use name and affiliation to determine equality
+    def equals(self, other):
+        if (self.name != other.name):
+            return False
+        if (self.penn != other.penn): 
+            return False
+        if (self.chop != other.chop): 
+            return False
+        return True
+
+    def combine(self, other):
+        self.pmids.extend(other.pmids)
+        self.roles.extend(other.roles)
+        for affiliation in other.affiliation:
+            if affiliation not in self.affiliations:
+                self.affiliations.append(affiliation)
+
 
 def obtain_descriptions():
 
@@ -208,6 +234,7 @@ def main():
         # Subject Header (MESH) and the description ID
         medical_record_df = pd.DataFrame(columns=['PMID', 'Desc', 'Primary_MeSH', 'Num'])
 
+        author_list = list()
         title_list = list()
         abstract_list = list()
 
@@ -259,11 +286,15 @@ def main():
                 for author_index, organizations in enumerate(zip(chop_organization, penn_organization)):
                     # check if the author belongs to either CHOP or PENN
                     if 1 in organizations:
-                        row = pd.DataFrame([[pmid, authors[author_index], organizations[0], organizations[1],
-                                            roles[author_index], affiliations[author_index]]],
-                                           columns=['PMID', 'Author', 'author_chop', 'author_penn', 'Role',
-                                                    'AffiliationInfo'])
-                        author_record_df = author_record_df.append(row, ignore_index=True)
+                        author = Author(authors[author_index], pmid, roles[author_index], organizations[1], organizations[0], affiliations[author_index])
+                        exists = False
+                        for a in author_list:
+                            if a.equals(author):
+                                exists = True
+                                a.combine(author)
+                                break
+                        if not exists:
+                            author_list.append(author)
 
                 authors = ';'.join(authors)
 
@@ -280,6 +311,14 @@ def main():
                 logging.getLogger('regular').debug(msg)
                 msg = 'Exception message = {0}'.format(e)
                 logging.getLogger('regular').debug(msg)
+
+        # authors to pd.dataFrame
+        for author in author_list:
+            row = pd.DataFrame([[author.pmids, author.name, author.chop, author.penn,
+                                author.roles, author.affiliations]],
+                            columns=['PMID', 'Author', 'author_chop', 'author_penn', 'Role',
+                                        'AffiliationInfo'])
+            author_record_df = author_record_df.append(row, ignore_index=True)
 
         pandas.io.formats.excel.header_style = None
         # contains all the metadata elements on the author level: Pubmed unique Identifier number(PMID), AuthorID (as a

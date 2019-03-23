@@ -2,20 +2,20 @@ import csv
 
 class Author:
     def __init__(self):
-        self.id = ''
+        self.ids = []
         self.name = ''
         self.chop = False
         self.penn = False
-        self.role = ''
+        self.roles = []
         self.affiliations = []
     
     def to_dict(self):
         d = {}
-        d['id'] = self.id
+        d['ids'] = self.ids
         d['name'] = self.name
         d['chop'] = self.chop
         d['penn'] = self.penn
-        d['role'] = self.role
+        d['roles'] = self.roles
         d['affiliations'] = self.affiliations
         return d
 
@@ -103,11 +103,11 @@ def get_publication_records():
 # PMID, Author, author_chop, author_penn, Role, AffiliationInfo
 def get_author(entry):
     author = Author()
-    author.id = entry[0]
+    author.ids = entry[0]
     author.name = entry[1]
     author.chop = True if entry[2] == '1' else False
     author.penn = True if entry[3] == '1' else False
-    author.role = entry[4]
+    author.roles = entry[4]
     author.affiliations = entry[5].split(';')
     return author
 
