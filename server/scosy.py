@@ -295,7 +295,7 @@ def main():
                                 a.combine(author)
                                 break
                         if not exists:
-                            author_list = author_list.append(author)
+                            author_list.append(author)
 
                 authors = ';'.join(authors)
 
@@ -305,8 +305,8 @@ def main():
                             'date'])
                 paper_record_df = paper_record_df.append(row)
 
-                title_list = title_list.append(title)
-                abstract_list = abstract_list.append(abstract)
+                title_list.append(title)
+                abstract_list.append(abstract)
 
             except Exception as e:
                 msg = 'Error while processing PMID={0}'.format(pmid)
