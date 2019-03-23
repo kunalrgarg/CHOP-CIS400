@@ -14,24 +14,28 @@ class Author:
         self.roles = [role]
         self.penn = penn
         self.chop = chop
-        self.affiliations = affiliations
+        if affiliations is None:
+            self.affiliations = []
+        elif affiliations is list:
+            self.affiliations = affiliations
+        else:
+            self.affiliations = [affiliations]
     
     # use name and affiliation to determine equality
     def equals(self, other):
         if (self.name != other.name):
             return False
-        if (self.penn != other.penn): 
+        if (self.penn != other.penn):
             return False
-        if (self.chop != other.chop): 
+        if (self.chop != other.chop):
             return False
         return True
+
 
     def combine(self, other):
         self.pmids.extend(other.pmids)
         self.roles.extend(other.roles)
-        for affiliation in other.affiliation:
-            if affiliation not in self.affiliations:
-                self.affiliations.append(affiliation)
+        self.affiliations.extend(other.affiliations)
 
 
 def obtain_descriptions():
@@ -325,8 +329,8 @@ def main():
         pandas.io.formats.excel.header_style = None
         # contains all the metadata elements on the author level: Pubmed unique Identifier number(PMID), AuthorID (as a
         # (CA) Ordinary Author (OA) or Principal Author (PA) and the author's affiliation
-        author_record_df.to_excel('record_results/author_record.xlsx', sheet_name='author_record', index=False)
-        author_record_df.to_csv('record_results/author_record.csv', index=False)
+        # author_record_df.to_excel('record_results/author_record.xlsx', sheet_name='author_record', index=False)
+        # author_record_df.to_csv('record_results/author_record.csv', index=False)
         # contains all the metadata elements on the paper level: Pubmed unique Identifier number(PMID), Title, Abstract,
         # Year, Month, AuthorList, SubjectList, date
         paper_record_df.to_excel('record_results/paper_record.xlsx', sheet_name='paper_record', index=False)
