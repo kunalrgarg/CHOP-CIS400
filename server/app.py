@@ -13,6 +13,21 @@ CORS(app)
 # API routes helpers
 ##
 
+def get_statistics(authors, publications):
+    statistics = {}
+    statistics['author_count'] = len(authors)
+    statistics['publication_count'] = len(publications)
+    statistics['mesh_terms'] = {}
+    for publication in publications:
+        term = publication['mesh']['term']
+        if term == '':
+             continue
+        if term in statistics['mesh_terms']:
+            statistics['mesh_terms'][term] += 1
+        else:
+            statistics['mesh_terms'][term] = 1
+    return statistics
+
 def get_author_data(publications):
     '''Returns a list of author data as a dictionary'''
 
@@ -48,11 +63,14 @@ def search_by_author(name):
     # PMID,Title,Abstract,Year,Month,author_list,subject_list,date
     for publication in records.get_publication_records():
         for author in authors:
-            if author.name in publication.author_list:
+            if author['name'] in publication.author_list:
                 publications.append(publication.to_dict())
                 break
 
-    result = { 'authors': authors, 'publications': publications }
+    publications = sorted(publications, key=lambda publication: publication['date'], reverse=True)
+    authors = sorted(authors, key=lambda author: author['name'])
+    statisitcs = get_statistics(authors, publications)
+    result = { 'statistics': statisitcs, 'authors': authors, 'publications': publications }
     return jsonify(result)
 
 
@@ -76,7 +94,10 @@ def search_by_mesh(term):
     
     # get author data
     authors = get_author_data(publications)
-    result = { 'authors': authors, 'publications': publications }
+    publications = sorted(publications, key=lambda publication: publication['date'], reverse=True)
+    authors = sorted(authors, key=lambda author: author['name'])
+    statisitcs = get_statistics(authors, publications)
+    result = { 'statistics': statisitcs, 'authors': authors, 'publications': publications }
     return jsonify(result)
 
 
@@ -91,7 +112,10 @@ def search_by_title(title):
                 publications.append(publication.to_dict())
 
     authors = get_author_data(publications)
-    result = { 'authors': authors, 'publications': publications }
+    publications = sorted(publications, key=lambda publication: publication['date'], reverse=True)
+    authors = sorted(authors, key=lambda author: author['name'])
+    statisitcs = get_statistics(authors, publications)
+    result = { 'statistics': statisitcs, 'authors': authors, 'publications': publications }
     return jsonify(result)
 
 
@@ -106,7 +130,10 @@ def search_by_keyword(keyword):
             publications.append(publication.to_dict())
 
     authors = get_author_data(publications)
-    result = {'authors': authors, 'publications': publications}
+    publications = sorted(publications, key=lambda publication: publication['date'], reverse=True)
+    authors = sorted(authors, key=lambda author: author['name'])
+    statisitcs = get_statistics(authors, publications)
+    result = { 'statistics': statisitcs, 'authors': authors, 'publications': publications }
     return jsonify(result)
 
 
@@ -126,7 +153,7 @@ def search_for_publications(query):
         return search_by_author(query)
     elif searchword == 'keyword':
         return search_by_keyword(query)
-    return jsonify([])
+    return jsonify([{'statistics': [], 'authors': [], 'publications': []}])
 
 
 ##
