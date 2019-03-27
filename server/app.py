@@ -37,7 +37,7 @@ def get_author_data(publications):
             author_names.add(name)
 
     result = []
-    for author in records.get_author_records():
+    for uid, author in records.get_author_records().items():
         for name in author_names:
             if name == author.name:
                 result.append(author.to_dict())
@@ -54,7 +54,8 @@ def search_by_author(name):
 
     publication_records = records.get_publication_records()
     publications = []
-    for author in records.get_author_records():
+
+    for uid, author in records.get_author_records().items():
         match = True
         # split name so that name order does not matter for search (last, first vs first last)
         for part in name_split:
@@ -63,19 +64,9 @@ def search_by_author(name):
                 break
         if match:
             authors.append(author.to_dict())
-            # for pmid in author.ids:
-            #     for publication in publication_records:
-            #         if pmid == publication.id:
-            #             if publication not in publications:
-            #                 publications.append(publication)
-            #             break
-
-    # PMID,Title,Abstract,Year,Month,author_list,subject_list,date
-    for publication in records.get_publication_records():
-        for author in authors:
-            if author['name'] in publication.author_list:
-                publications.append(publication.to_dict())
-                break
+            for pmid in author.pmids:
+                if pmid in publication_records:
+                    publications.append(publication_records[pmid].to_dict())
 
     publications = sorted(publications, key=lambda publication: publication['date'], reverse=True)
     authors = sorted(authors, key=lambda author: author['name'])
@@ -98,7 +89,7 @@ def search_by_mesh(term):
         return jsonify([{'statistics': [], 'authors': [], 'publications': []}])
 
     publications = []
-    for publication in records.get_publication_records():
+    for pmid, publication in records.get_publication_records().items():
         if mesh_num in publication.mesh.num:
             publications.append(publication.to_dict())
     
@@ -117,7 +108,7 @@ def search_by_title(title):
 
     title = title.lower()
     publications = []
-    for publication in records.get_publication_records():
+    for pmid, publication in records.get_publication_records().items():
             if title in publication.title.lower():
                 publications.append(publication.to_dict())
 
@@ -135,7 +126,7 @@ def search_by_keyword(keyword):
 
     keyword = keyword.lower()
     publications = []
-    for publication in records.get_publication_records():
+    for pmid, publication in records.get_publication_records().items():
         if keyword in publication.title or keyword in publication.subject_list or keyword in publication.abstract:
             publications.append(publication.to_dict())
 
@@ -151,14 +142,14 @@ def search_by_pmid(pmid):
     '''Search for a publication by its PMID'''
     '''Returns the publication (if found) and its authors'''
 
-    for p in records.get_publication_records():
-        if pmid == p.id:
-            publication = p.to_dict() 
-            authors = get_author_data([publication])
-            authors = sorted(authors, key=lambda author: author['name'])
-            statisitcs = get_statistics(authors, [publication])
-            result = { 'statistics': statisitcs, 'authors': authors, 'publications': [publication] }
-            return jsonify(result)
+    publications = records.get_publication_records()
+    if pmid in publications:
+        publication = publications[pmid].to_dict() 
+        authors = get_author_data([publication])
+        authors = sorted(authors, key=lambda author: author['name'])
+        statisitcs = get_statistics(authors, [publication])
+        result = { 'statistics': statisitcs, 'authors': authors, 'publications': [publication] }
+        return jsonify(result)
     return jsonify([{'statistics': [], 'authors': [], 'publications': []}])
 
 ##

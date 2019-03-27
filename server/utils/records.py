@@ -2,7 +2,8 @@ import csv
 
 class Author:
     def __init__(self):
-        self.ids = []
+        self.id = ''
+        self.pmids = []
         self.name = ''
         self.chop = False
         self.penn = False
@@ -11,12 +12,13 @@ class Author:
     
     def to_dict(self):
         d = {}
-        d['ids'] = self.ids
+        d['pmids'] = self.pmids
         d['name'] = self.name
         d['chop'] = self.chop
         d['penn'] = self.penn
         d['roles'] = self.roles
         d['affiliations'] = self.affiliations
+        d['id'] = self.id
         return d
 
 
@@ -88,13 +90,13 @@ def get_publication_records():
             mesh.term = row[3]
             mesh_data[row[2]] = mesh
 
-    publications = []
+    publications = {}
     with open('server/record_results/paper_record.csv') as pub_csv:
         csv_reader = csv.reader(pub_csv, delimiter=',')
         for row in csv_reader:
             publication = get_publication(row)
             publication.mesh = mesh_data[publication.id] if publication.id in mesh_data else Mesh()
-            publications.append(publication)
+            publications[publication.id] = publication
 
     return publications
 
@@ -103,23 +105,24 @@ def get_publication_records():
 # PMID, Author, author_chop, author_penn, Role, AffiliationInfo
 def get_author(entry):
     author = Author()
-    author.ids = entry[0]
+    author.pmids = entry[0].replace('[','').replace(']','').replace(' ','').replace("'",'').split(',')
     author.name = entry[1]
     author.chop = True if entry[2] == '1' else False
     author.penn = True if entry[3] == '1' else False
     author.roles = entry[4]
     author.affiliations = entry[5].split(';')
+    author.id = entry[6]
     return author
 
 
 # returns all Authors from the author_record.csv
 def get_author_records():
-    authors = []
+    authors = {}
     with open('server/record_results/author_record.csv') as author_csv:
         csv_reader = csv.reader(author_csv, delimiter=',')
         for row in csv_reader:
             author = get_author(row)
-            authors.append(author)
+            authors[author.id] = author
     return authors
 
 

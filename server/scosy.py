@@ -8,12 +8,13 @@ import pandas as pd
 import pandas.io.formats.excel
 
 class Author:
-    def __init__(self, name, pmid, role, penn, chop, affiliations):
+    def __init__(self, name, pmid, role, penn, chop, affiliations, uid):
         self.name = name
         self.pmids = [pmid]
         self.roles = [role]
         self.penn = penn
         self.chop = chop
+        self.uid = uid
         if affiliations is None:
             self.affiliations = []
         elif affiliations is list:
@@ -230,7 +231,7 @@ def main():
         # contains all the metadata elements on the author level: PubMed unique Identifier number(PMID), AuthorID (as a
         # (CA) Ordinary Author (OA) or Principal Author (PA) and the author's affiliation
         author_record_df = pd.DataFrame(columns=['PMID', 'Author', 'author_chop', 'author_penn', 'Role',
-                                                 'AffiliationInfo'])
+                                                 'AffiliationInfo', 'UID'])
         # contains all the metadata elements on the paper level: PubMed unique Identifier number(PMID), Title, Abstract,
         # Year, Month, AuthorList, SubjectList, date
         paper_record_df = pd.DataFrame(columns=['PMID', 'Title', 'Abstract', 'Year', 'Month', 'author_list',
@@ -244,6 +245,7 @@ def main():
         title_list = list()
         abstract_list = list()
 
+        uid = 1
         # get the relevant information for each record
         for record_index, record in enumerate(fetch_records):
 
@@ -293,7 +295,7 @@ def main():
                 for author_index, organizations in enumerate(zip(chop_organization, penn_organization)):
                     # check if the author belongs to either CHOP or PENN
                     if 1 in organizations:
-                        author = Author(authors[author_index], pmid, roles[author_index], organizations[1], organizations[0], affiliations[author_index])
+                        author = Author(authors[author_index], pmid, roles[author_index], organizations[1], organizations[0], affiliations[author_index], uid)
                         exists = False
                         for a in author_list:
                             if a.equals(author):
@@ -302,6 +304,8 @@ def main():
                                 break
                         if not exists:
                             author_list.append(author)
+                            # increment the uid if this is a new author, otherwise reuse it
+                            uid += 1
 
                 authors = ';'.join(authors)
 
@@ -325,16 +329,16 @@ def main():
         # authors to pd.dataFrame
         for author in author_list:
             row = pd.DataFrame([[author.pmids, author.name, author.chop, author.penn,
-                                author.roles, author.affiliations]],
+                                author.roles, author.affiliations, author.uid]],
                             columns=['PMID', 'Author', 'author_chop', 'author_penn', 'Role',
-                                        'AffiliationInfo'])
+                                        'AffiliationInfo', 'UID'])
             author_record_df = author_record_df.append(row, ignore_index=True)
 
         pandas.io.formats.excel.header_style = None
         # contains all the metadata elements on the author level: Pubmed unique Identifier number(PMID), AuthorID (as a
         # (CA) Ordinary Author (OA) or Principal Author (PA) and the author's affiliation
-        # author_record_df.to_excel('record_results/author_record.xlsx', sheet_name='author_record', index=False)
-        # author_record_df.to_csv('record_results/author_record.csv', index=False)
+        author_record_df.to_excel('record_results/author_record.xlsx', sheet_name='author_record', index=False)
+        author_record_df.to_csv('record_results/author_record.csv', index=False)
         # contains all the metadata elements on the paper level: Pubmed unique Identifier number(PMID), Title, Abstract,
         # Year, Month, AuthorList, SubjectList, date
         paper_record_df.to_excel('record_results/paper_record.xlsx', sheet_name='paper_record', index=False)
