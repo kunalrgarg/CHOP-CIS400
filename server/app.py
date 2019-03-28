@@ -4,6 +4,7 @@ from flask_cors import CORS
 import csv
 import os
 import utils.records as records
+import recommendation
 
 '''Main wrapper for app creation'''
 app = Flask(__name__, static_folder='../build')
@@ -31,18 +32,16 @@ def get_statistics(authors, publications):
 def get_author_data(publications):
     '''Returns a list of author data as a dictionary'''
 
-    author_names = set()
+    author_records = records.get_author_records()
+    author_ids = set()
+    authors = []
     for publication in publications:
-        for name in publication['author_list']:
-            author_names.add(name)
+        for uid in publication['author_ids']:
+            if uid in author_records and uid not in author_ids:
+                author_ids.add(uid)
+                authors.append(author_records[uid].to_dict())
 
-    result = []
-    for uid, author in records.get_author_records().items():
-        for name in author_names:
-            if name == author.name:
-                result.append(author.to_dict())
-
-    return result
+    return authors
 
 
 def search_by_author(name):
@@ -150,7 +149,7 @@ def search_by_pmid(pmid):
         statisitcs = get_statistics(authors, [publication])
         result = { 'statistics': statisitcs, 'authors': authors, 'publications': [publication] }
         return jsonify(result)
-    return jsonify([{'statistics': [], 'authors': [], 'publications': []}])
+    return jsonify({'statistics': [], 'authors': [], 'publications': []})
 
 ##
 # API Routes
@@ -171,6 +170,17 @@ def search_for_publications(query):
     elif searchword == 'pmid':
         return search_by_pmid(query)
     return jsonify([{'statistics': [], 'authors': [], 'publications': []}])
+
+
+@app.route('/api/recommendations/<author_uid>')
+def get_recommendations(author_uid):
+    authors = records.get_author_records()
+    if author_uid in authors:
+        author = authors[author_uid]
+        collaborators, mesh_terms = recommendation.recommend_collaborators(author)
+        return jsonify({'collaborators': collaborators, 'mesh': mesh_terms})
+    else:
+        return jsonify({'collaborators': []})
 
 
 ##

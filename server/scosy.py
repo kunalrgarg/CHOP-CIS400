@@ -24,19 +24,22 @@ class Author:
     
     # use name and affiliation to determine equality
     def equals(self, other):
-        if (self.name != other.name):
-            return False
-        if (self.penn != other.penn):
-            return False
-        if (self.chop != other.chop):
-            return False
-        return True
+        return self.name == other.name
+        # if (self.name != other.name):
+        #     return False
+        # if (self.penn != other.penn):
+        #     return False
+        # if (self.chop != other.chop):
+        #     return False
+        # return True
 
 
     def combine(self, other):
         self.pmids.extend(other.pmids)
         self.roles.extend(other.roles)
         self.affiliations.extend(other.affiliations)
+        self.penn = self.penn or other.penn
+        self.chop = self.chop or other.chop
 
 
 def obtain_descriptions():
@@ -213,7 +216,7 @@ def main():
         # (so we close it)
         fetch_records_handle.close()
 
-    elif args.process:
+    if args.process:
 
         # import data from file
         logging.getLogger('regular').info('reading data from result file')
@@ -235,8 +238,7 @@ def main():
         # contains all the metadata elements on the paper level: PubMed unique Identifier number(PMID), Title, Abstract,
         # Year, Month, AuthorList, SubjectList, date
         paper_record_df = pd.DataFrame(columns=['PMID', 'Title', 'Abstract', 'Year', 'Month', 'author_list',
-                                                'subject_list',
-                                                'date'])
+                                                'subject_list', 'date', 'author_ids'])
         # contains all the metadata of the medical information: PubMed unique Identifier number(PMID), Primary Medical
         # Subject Header (MESH) and the description ID
         medical_record_df = pd.DataFrame(columns=['PMID', 'Desc', 'Primary_MeSH', 'Num'])
@@ -292,6 +294,7 @@ def main():
                     medical_record_df = medical_record_df.append(row, ignore_index=True)
 
                 # author information
+                author_ids = []
                 for author_index, organizations in enumerate(zip(chop_organization, penn_organization)):
                     # check if the author belongs to either CHOP or PENN
                     if 1 in organizations:
@@ -301,18 +304,21 @@ def main():
                             if a.equals(author):
                                 exists = True
                                 a.combine(author)
+                                author_ids.append(str(a.uid))
                                 break
                         if not exists:
                             author_list.append(author)
+                            author_ids.append(str(author.uid))
                             # increment the uid if this is a new author, otherwise reuse it
                             uid += 1
 
                 authors = ';'.join(authors)
+                author_ids = ';'.join(author_ids)
 
                 # publication information
-                row = pd.DataFrame([[pmid, title, abstract, year, month, authors, mesh_term, date]],
+                row = pd.DataFrame([[pmid, title, abstract, year, month, authors, mesh_term, date, author_ids]],
                     columns=['PMID', 'Title', 'Abstract', 'Year', 'Month', 'author_list', 'subject_list',
-                            'date'])
+                            'date', 'author_ids'])
                 paper_record_df = paper_record_df.append(row)
 
                 title_list.append(title)
