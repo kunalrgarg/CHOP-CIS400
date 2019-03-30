@@ -1,17 +1,18 @@
 import React, { Component } from 'react';
 import * as RB from 'react-bootstrap';
+import ZoomableBurst from './zoomableBurst';
+
 
 class Index extends Component {
 
   render() {
-    const { updateSearchTerm, updateSearchType, requestSearch, searchTerm, searchType } = this.props;
+    const { updateSearchTerm, updateSearchType, requestSearch, searchTerm, searchType, results } = this.props;
 
     const BUTTONS = ['Default']; // can add more buttons of various style
 
     function onSelectAlert(value) {
       updateSearchType(value);
     }
-
 
     function renderDropdownButton(title, i) {
       return (
@@ -76,14 +77,16 @@ class Index extends Component {
                       </RB.Col>
                     </RB.Row>
                   </RB.Grid>
-
                   <RB.HelpBlock>This search term will be used for finding researcher data</RB.HelpBlock>
+                  <RB.Grid>
+                  </RB.Grid>
                 </RB.FormGroup>
                 <RB.Button onClick={() => requestSearch(searchTerm, searchType)}>Submit</RB.Button>
               </form>
             </RB.Col>
             <RB.Col xs={4} md={2} />
           </RB.Row>
+          <ZoomableBurst/>
         </RB.Grid>
       </div>
     )
