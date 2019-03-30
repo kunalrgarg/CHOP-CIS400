@@ -177,7 +177,7 @@ def get_recommendations(author_uid):
     authors = records.get_author_records()
     if author_uid in authors:
         author = authors[author_uid]
-        collaborators = recommendation.recommend_collaborators(author)
+        collaborators = recommendation.recommend_collaborators(author, records.get_author_records(), records.get_publication_records())
         return jsonify({'collaborators': collaborators})
     else:
         return jsonify({'collaborators': []})

@@ -18,9 +18,9 @@ class Collaborator:
 
 '''given an author, returns a list of authors who are recommended to collaborate along with a collaboration
    rating [0, 1]. Does not include previous collaborators. If you need this, use Author.get_collaborators()'''
-def recommend_collaborators(author):
+def recommend_collaborators(author, author_records, publication_records):
     # recommendation weight based off of past collaboration network
-    authors = records.get_author_records()
+    authors = author_records
     existing_collaborators = author.collaborators()
 
     collaborators = records.collaborators([authors[uid] for uid in existing_collaborators])
@@ -36,7 +36,7 @@ def recommend_collaborators(author):
 
 
     # recommendation weight based off of publication similarity
-    publications = records.get_publication_records()
+    publications = publication_records
     similarities_record = records.get_similarities_records()
     publication_weight = {} # uid -> collaborator
     for auth_pmids in author.pmids:
