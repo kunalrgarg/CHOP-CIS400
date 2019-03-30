@@ -7,6 +7,40 @@ import argparse
 import pandas as pd
 import pandas.io.formats.excel
 
+class Author:
+    def __init__(self, name, pmid, role, penn, chop, affiliations, uid):
+        self.name = name
+        self.pmids = [pmid]
+        self.roles = [role]
+        self.penn = penn
+        self.chop = chop
+        self.uid = uid
+        if affiliations is None:
+            self.affiliations = []
+        elif affiliations is list:
+            self.affiliations = affiliations
+        else:
+            self.affiliations = [affiliations]
+    
+    # use name and affiliation to determine equality
+    def equals(self, other):
+        return self.name == other.name
+        # if (self.name != other.name):
+        #     return False
+        # if (self.penn != other.penn):
+        #     return False
+        # if (self.chop != other.chop):
+        #     return False
+        # return True
+
+
+    def combine(self, other):
+        self.pmids.extend(other.pmids)
+        self.roles.extend(other.roles)
+        self.affiliations.extend(other.affiliations)
+        self.penn = self.penn or other.penn
+        self.chop = self.chop or other.chop
+
 
 def obtain_descriptions():
 
@@ -57,6 +91,8 @@ def assign_organization(affiliation_list):
     :param affiliation_list: a list of all the affiliations of the authors
     :return: chop_list, penn_list: lists with whether the author belong to the CHOP or PENN organization
     """
+    if affiliation_list is None:
+        return [], []
     # initialize CHOP and PENN authors' organization to None = 0
     chop_list = [0] * len(affiliation_list)
     penn_list = [0] * len(affiliation_list)
@@ -180,7 +216,7 @@ def main():
         # (so we close it)
         fetch_records_handle.close()
 
-    elif args.process:
+    if args.process:
 
         # import data from file
         logging.getLogger('regular').info('reading data from result file')
@@ -198,19 +234,20 @@ def main():
         # contains all the metadata elements on the author level: PubMed unique Identifier number(PMID), AuthorID (as a
         # (CA) Ordinary Author (OA) or Principal Author (PA) and the author's affiliation
         author_record_df = pd.DataFrame(columns=['PMID', 'Author', 'author_chop', 'author_penn', 'Role',
-                                                 'AffiliationInfo'])
+                                                 'AffiliationInfo', 'UID'])
         # contains all the metadata elements on the paper level: PubMed unique Identifier number(PMID), Title, Abstract,
         # Year, Month, AuthorList, SubjectList, date
         paper_record_df = pd.DataFrame(columns=['PMID', 'Title', 'Abstract', 'Year', 'Month', 'author_list',
-                                                'subject_list',
-                                                'date'])
+                                                'subject_list', 'date', 'author_ids'])
         # contains all the metadata of the medical information: PubMed unique Identifier number(PMID), Primary Medical
         # Subject Header (MESH) and the description ID
         medical_record_df = pd.DataFrame(columns=['PMID', 'Desc', 'Primary_MeSH', 'Num'])
 
+        author_list = list()
         title_list = list()
         abstract_list = list()
 
+        uid = 1
         # get the relevant information for each record
         for record_index, record in enumerate(fetch_records):
 
@@ -250,26 +287,38 @@ def main():
                     mesh_description, term = convert_mesh_description(mesh_description_dict, mesh_term)
                     mesh_term = ';'.join(mesh_term)
 
-                # output information
+                # mesh information
                 if mesh_description:
                     mesh_number = mesh_number_dict[mesh_description]
                     row = pd.DataFrame([[pmid, term, mesh_description, mesh_number]], columns=['PMID', 'Primary_MeSH', 'Desc', 'Num'])
                     medical_record_df = medical_record_df.append(row, ignore_index=True)
 
+                # author information
+                author_ids = []
                 for author_index, organizations in enumerate(zip(chop_organization, penn_organization)):
                     # check if the author belongs to either CHOP or PENN
                     if 1 in organizations:
-                        row = pd.DataFrame([[pmid, authors[author_index], organizations[0], organizations[1],
-                                            roles[author_index], affiliations[author_index]]],
-                                           columns=['PMID', 'Author', 'author_chop', 'author_penn', 'Role',
-                                                    'AffiliationInfo'])
-                        author_record_df = author_record_df.append(row, ignore_index=True)
+                        author = Author(authors[author_index], pmid, roles[author_index], organizations[1], organizations[0], affiliations[author_index], uid)
+                        exists = False
+                        for a in author_list:
+                            if a.equals(author):
+                                exists = True
+                                a.combine(author)
+                                author_ids.append(str(a.uid))
+                                break
+                        if not exists:
+                            author_list.append(author)
+                            author_ids.append(str(author.uid))
+                            # increment the uid if this is a new author, otherwise reuse it
+                            uid += 1
 
                 authors = ';'.join(authors)
+                author_ids = ';'.join(author_ids)
 
-                row = pd.DataFrame([[pmid, title, abstract, year, month, authors, mesh_term, date]],
-                                   columns=['PMID', 'Title', 'Abstract', 'Year', 'Month', 'author_list', 'subject_list',
-                                            'date'])
+                # publication information
+                row = pd.DataFrame([[pmid, title, abstract, year, month, authors, mesh_term, date, author_ids]],
+                    columns=['PMID', 'Title', 'Abstract', 'Year', 'Month', 'author_list', 'subject_list',
+                            'date', 'author_ids'])
                 paper_record_df = paper_record_df.append(row)
 
                 title_list.append(title)
@@ -277,9 +326,19 @@ def main():
 
             except Exception as e:
                 msg = 'Error while processing PMID={0}'.format(pmid)
-                logging.getLogger('regular').debug(msg)
+                # logging.getLogger('regular').debug(msg)
+                logging.getLogger('regular').info(msg)
                 msg = 'Exception message = {0}'.format(e)
-                logging.getLogger('regular').debug(msg)
+                # logging.getLogger('regular').debug(msg)
+                logging.getLogger('regular').info(msg)
+
+        # authors to pd.dataFrame
+        for author in author_list:
+            row = pd.DataFrame([[author.pmids, author.name, author.chop, author.penn,
+                                author.roles, author.affiliations, author.uid]],
+                            columns=['PMID', 'Author', 'author_chop', 'author_penn', 'Role',
+                                        'AffiliationInfo', 'UID'])
+            author_record_df = author_record_df.append(row, ignore_index=True)
 
         pandas.io.formats.excel.header_style = None
         # contains all the metadata elements on the author level: Pubmed unique Identifier number(PMID), AuthorID (as a
