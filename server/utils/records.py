@@ -179,7 +179,7 @@ def get_mesh(row):
     return mesh
 
 
-def get_mesh_tree():
+def get_mesh_records():
     mesh_tree = []
     with open('server/template/2019MeshTree.csv') as mesh_tree_csv:
         csv_reader = csv.reader(mesh_tree_csv, delimiter=',')
@@ -187,6 +187,29 @@ def get_mesh_tree():
             mesh = get_mesh(row)
             mesh_tree.append(mesh)
     return mesh_tree
+
+
+def get_mesh_tree():
+    root = {'name': 'Mesh Tree', 'number': '', 'children': []}
+    with open('server/template/2019MeshTree.csv') as mesh_tree_csv:
+        csv_reader = csv.reader(mesh_tree_csv, delimiter=',')
+        for row in csv_reader:
+            mesh = get_mesh(row)
+            parent = root
+            numbers = mesh.num.split('.')
+            for number in numbers:
+                found = False
+                for child in parent['children']:
+                    if number == child['number']:
+                        parent = child
+                        found = True
+                        break
+                if not found:
+                    child = {'name': mesh.term, 'number': number, 'children': []}
+                    parent['children'].append(child)
+                    break
+
+    return root
 
 
 class PublicationSimilarities:

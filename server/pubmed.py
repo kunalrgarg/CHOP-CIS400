@@ -79,6 +79,7 @@ with filename.open('r') as tree_file:
             mesh_description_dict[key.lower()] = value
             print('number = {0}, term = {1}'.format(value, key))
 
+# mesh_df = pd.DataFrame(columns=['number', 'term'])
 # with open(filename) as mesh_tree:  
 #    line = mesh_tree.readline()
 #    while line:
@@ -92,178 +93,178 @@ with filename.open('r') as tree_file:
 #         print('number = {0}, term = {1}'.format(value, key))
 #         row = pd.DataFrame([[value, key]], columns=['number', 'term'])
 #         mesh_df = mesh_df.append(row, ignore_index=True)
-#         line = fp.readline()
+#         line = mesh_tree.readline()
+# mesh_df.to_csv(Path(template_path, '2019MeshTree.csv'), index=False)
+
+# # In[47]:
 
 
-# In[47]:
+# data_file = Path(project_path, 'results.xml')
+# records_handle = data_file.open()
+# fetch_records = parse(handle=records_handle)
 
 
-data_file = Path(project_path, 'results.xml')
-records_handle = data_file.open()
-fetch_records = parse(handle=records_handle)
+# # In[48]:
 
 
-# In[48]:
+# # contains all the metadata elements on the paper level: PubMed unique Identifier number(PMID), Title, Abstract,
+# # Year, Month, AuthorList, SubjectList, date
+# paper_df = pd.DataFrame(columns=['pmid', 'title', 'abstract', 'mesh'])
 
+# for record in fetch_records:
 
-# contains all the metadata elements on the paper level: PubMed unique Identifier number(PMID), Title, Abstract,
-# Year, Month, AuthorList, SubjectList, date
-paper_df = pd.DataFrame(columns=['pmid', 'title', 'abstract', 'mesh'])
-
-for record in fetch_records:
-
-    pmid = record.get('PMID')
-    title = record.get('TI')
-    abstract = record.get('AB')
-    mesh_term = record.get('MH')
+#     pmid = record.get('PMID')
+#     title = record.get('TI')
+#     abstract = record.get('AB')
+#     mesh_term = record.get('MH')
     
-    if pmid and abstract:
+#     if pmid and abstract:
         
-        if mesh_term and len(mesh_term) > 1:
-            # divide all the mesh with multiple term
-            mesh_term = [x.replace('*', '').lower().split('/')for x in mesh_term]
-            # flatten the list
-            mesh_term = reduce(iconcat, mesh_term, [])
+#         if mesh_term and len(mesh_term) > 1:
+#             # divide all the mesh with multiple term
+#             mesh_term = [x.replace('*', '').lower().split('/')for x in mesh_term]
+#             # flatten the list
+#             mesh_term = reduce(iconcat, mesh_term, [])
 
-        row = pd.DataFrame([[pmid, title, abstract, mesh_term]],
-                           columns=['pmid', 'title', 'abstract', 'mesh'])
-        paper_df = paper_df.append(row, ignore_index=True)
-
-
-# In[50]:
+#         row = pd.DataFrame([[pmid, title, abstract, mesh_term]],
+#                            columns=['pmid', 'title', 'abstract', 'mesh'])
+#         paper_df = paper_df.append(row, ignore_index=True)
 
 
-paper_df.to_csv(Path(data_path, 'pmid_title_abstract_mesh.csv'),index=False)
+# # In[50]:
 
 
-# In[51]:
+# paper_df.to_csv(Path(data_path, 'pmid_title_abstract_mesh.csv'),index=False)
 
 
-paper_df.head()
+# # In[51]:
 
 
-# In[63]:
+# paper_df.head()
 
 
-text = paper_df['title'].astype(str) + paper_df['abstract'].astype(str) + paper_df['mesh'].astype(str)
-text = [x.replace('None', '') for x in text]
-text = pd.DataFrame({'pmid': paper_df.pmid, 'text':text})
+# # In[63]:
 
 
-# In[65]:
+# text = paper_df['title'].astype(str) + paper_df['abstract'].astype(str) + paper_df['mesh'].astype(str)
+# text = [x.replace('None', '') for x in text]
+# text = pd.DataFrame({'pmid': paper_df.pmid, 'text':text})
 
 
-text.to_csv(Path(data_path, 'pmid_text.csv'), index=False)
+# # In[65]:
 
 
-# In[8]:
+# text.to_csv(Path(data_path, 'pmid_text.csv'), index=False)
 
 
-raw_documents = pd.read_csv(Path(data_path, 'pmid_text.csv'))
-raw_documents.head()
+# # In[8]:
 
 
-# In[10]:
-
-# preprocessing, remove stop words, set to lower case, lemmatize
-gen_docs = []
-stop_words = set(stopwords.words('english'))
-lemmatizer = WordNetLemmatizer()
-for text in raw_documents.text:
-    text_tmp = text.translate(str.maketrans('', '', string.punctuation))
-    tokens = [w.lower() for w in word_tokenize(text_tmp)]
-    doc = [lemmatizer.lemmatize(i) for i in tokens if not i in stop_words]
-    gen_docs.append(doc)
-
-# gen_docs = [[w.lower() for w in word_tokenize(text)] 
-#             for text in raw_documents.text]
-print(gen_docs[:5])
-
-# create a dict of enntry to pmid
-pmids = {}
-for idx, pmid in enumerate(raw_documents.pmid):
-    pmids[idx] = pmid
-
-# In[21]:
+# raw_documents = pd.read_csv(Path(data_path, 'pmid_text.csv'))
+# raw_documents.head()
 
 
-# create a dictionary to match tokens to integers
-dictionary = gensim.corpora.Dictionary(gen_docs)
-print(dictionary[5])
-print(dictionary.token2id['road'])
-print("Number of words in dictionary:",len(dictionary))
+# # In[10]:
+
+# # preprocessing: remove stop words, set to lower case, lemmatize
+# gen_docs = []
+# stop_words = set(stopwords.words('english'))
+# lemmatizer = WordNetLemmatizer()
+# for text in raw_documents.text:
+#     text_tmp = text.translate(str.maketrans('', '', string.punctuation))
+#     tokens = [w.lower() for w in word_tokenize(text_tmp)]
+#     doc = [lemmatizer.lemmatize(i) for i in tokens if not i in stop_words]
+#     gen_docs.append(doc)
+
+# # gen_docs = [[w.lower() for w in word_tokenize(text)] 
+# #             for text in raw_documents.text]
+# print(gen_docs[:5])
+
+# # create a dict of enntry to pmid
+# pmids = {}
+# for idx, pmid in enumerate(raw_documents.pmid):
+#     pmids[idx] = pmid
+
+# # In[21]:
 
 
-# In[22]:
+# # create a dictionary to match tokens to integers
+# dictionary = gensim.corpora.Dictionary(gen_docs)
+# print(dictionary[5])
+# print(dictionary.token2id['road'])
+# print("Number of words in dictionary:",len(dictionary))
 
 
-# lists the number of times each word occurs in the document
-# list of tuples
-    # first = index of the word
-    # second = number of time that appears in that document
-corpus = [dictionary.doc2bow(gen_doc) for gen_doc in gen_docs]
+# # In[22]:
 
 
-# In[31]:
+# # lists the number of times each word occurs in the document
+# # list of tuples
+#     # first = index of the word
+#     # second = number of time that appears in that document
+# corpus = [dictionary.doc2bow(gen_doc) for gen_doc in gen_docs]
 
 
-# number of unique tokens in the first document
-len(corpus[0])
+# # In[31]:
 
 
-# <pre>
-# term frequency inverse term frequency (tf-idf):
-#     term frequency = how often a word shows up in a document
-#     inverse document frequency = scale that value by how rare the word is in the corpus
-#     
-
-# In[33]:
+# # number of unique tokens in the first document
+# len(corpus[0])
 
 
-tf_idf = gensim.models.TfidfModel(corpus)
-print(tf_idf)
-s = 0
-for i in corpus:
-    s += len(i)
-print(s)
-# num_nnz = number of tokens
+# # <pre>
+# # term frequency inverse term frequency (tf-idf):
+# #     term frequency = how often a word shows up in a document
+# #     inverse document frequency = scale that value by how rare the word is in the corpus
+# #     
+
+# # In[33]:
 
 
-# In[52]:
+# tf_idf = gensim.models.TfidfModel(corpus)
+# print(tf_idf)
+# s = 0
+# for i in corpus:
+#     s += len(i)
+# print(s)
+# # num_nnz = number of tokens
 
 
-index = gensim.similarities.Similarity(str(similarities_path),
-                                       tf_idf[corpus], 
-                                       num_features=len(dictionary)) 
-query = next(iter(corpus))
-result = index[query]  # search similar to `query` in index
+# # In[52]:
 
 
-# In[66]:
+# index = gensim.similarities.Similarity(str(similarities_path),
+#                                        tf_idf[corpus], 
+#                                        num_features=len(dictionary)) 
+# query = next(iter(corpus))
+# result = index[query]  # search similar to `query` in index
 
 
-# yield similarities of the indexed documents
-similarities_df = pd.DataFrame()
+# # In[66]:
 
-# with Path(similarities_path, 'document_similarities.csv').open(mode='w+') as out_file:
-#     writer = csv.writer(out_file, delimiter=',')
-for doc_sim_ix, doc_sim in enumerate(index):
-        pmid = pmids[doc_sim_ix]#raw_documents.loc[doc_sim_ix]['pmid']
-        c_doc = 'document = {0}, pmid = {1}'.format(doc_sim_ix, pmid)
-        print(c_doc)
 
-        sorted_sim = sorted(list(enumerate(doc_sim)), key=lambda x:x[1], reverse=True)
+# # yield similarities of the indexed documents
+# similarities_df = pd.DataFrame()
 
-        sims_with_pmids = []
-        for idx, sim in sorted_sim[:100]:
-            sim_pmid = pmids[idx]
-            sims_with_pmids.append('{0},{1}'.format(sim_pmid, sim))
+# # with Path(similarities_path, 'document_similarities.csv').open(mode='w+') as out_file:
+# #     writer = csv.writer(out_file, delimiter=',')
+# for doc_sim_ix, doc_sim in enumerate(index):
+#         pmid = pmids[doc_sim_ix]#raw_documents.loc[doc_sim_ix]['pmid']
+#         c_doc = 'document = {0}, pmid = {1}'.format(doc_sim_ix, pmid)
+#         print(c_doc)
 
-        sims_with_pmids = ";".join(sims_with_pmids)
-        data = [pmid]
-        data.append(sims_with_pmids)
+#         sorted_sim = sorted(list(enumerate(doc_sim)), key=lambda x:x[1], reverse=True)
 
-        row = pd.DataFrame([data])
-        similarities_df = similarities_df.append(row, ignore_index=True)
+#         sims_with_pmids = []
+#         for idx, sim in sorted_sim[:100]:
+#             sim_pmid = pmids[idx]
+#             sims_with_pmids.append('{0},{1}'.format(sim_pmid, sim))
 
-similarities_df.to_csv(Path(similarities_path, 'document_similarities.csv'),index=False)
+#         sims_with_pmids = ";".join(sims_with_pmids)
+#         data = [pmid]
+#         data.append(sims_with_pmids)
+
+#         row = pd.DataFrame([data])
+#         similarities_df = similarities_df.append(row, ignore_index=True)
+
+# similarities_df.to_csv(Path(similarities_path, 'document_similarities.csv'),index=False)

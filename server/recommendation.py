@@ -62,8 +62,8 @@ def recommend_collaborators(author):
         else:
             total_weight[uid] = publication_weight[uid]
 
-    recommendations = [collab.to_dict() for collab in total_weight.values()]
+    recommendations = [collab.to_dict() for collab in total_weight.values()][:20]
 
-    return sorted(recommendations, key=lambda x: x['weight'], reverse=True), {}
+    return sorted(recommendations, key=lambda x: x['weight'], reverse=True)
 
 

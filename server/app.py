@@ -80,7 +80,7 @@ def search_by_mesh(term):
 
     term = term.lower()
     mesh_num = ''
-    for mesh in records.get_mesh_tree():
+    for mesh in records.get_mesh_records():
         if term == mesh.term.lower():
             mesh_num = mesh.num
 
@@ -177,11 +177,10 @@ def get_recommendations(author_uid):
     authors = records.get_author_records()
     if author_uid in authors:
         author = authors[author_uid]
-        collaborators, mesh_terms = recommendation.recommend_collaborators(author)
-        return jsonify({'collaborators': collaborators, 'mesh': mesh_terms})
+        collaborators = recommendation.recommend_collaborators(author)
+        return jsonify({'collaborators': collaborators})
     else:
         return jsonify({'collaborators': []})
-
 
 ##
 # View route
