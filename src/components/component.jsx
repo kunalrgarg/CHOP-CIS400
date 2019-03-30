@@ -82,6 +82,8 @@ class Index extends Component {
                   </RB.Grid>
                 </RB.FormGroup>
                 <RB.Button onClick={() => requestSearch(searchTerm, searchType)}>Submit</RB.Button>
+                <hr/>
+                <svg width={800} height={800}></svg>
               </form>
             </RB.Col>
             <RB.Col xs={4} md={2} />
