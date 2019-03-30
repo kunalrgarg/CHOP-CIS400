@@ -93,3 +93,5 @@ typings/
 # python cache
 server/__pycache__/
 server/utils/__pycache__
+
+venv/
