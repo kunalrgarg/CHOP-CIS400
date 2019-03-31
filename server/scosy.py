@@ -7,6 +7,17 @@ import argparse
 import pandas as pd
 import pandas.io.formats.excel
 import utils.records as records
+from pathlib import Path
+import os
+import nltk
+nltk.download('stopwords')
+nltk.download('wordnet')
+from nltk.tokenize import word_tokenize 
+from nltk.stem import WordNetLemmatizer
+from nltk.corpus import stopwords
+import gensim
+import string
+
 
 class Author:
     def __init__(self, name, pmid, role, penn, chop, affiliations, uid):
@@ -109,21 +120,42 @@ def convert_mesh_description(mesh_records, mesh_terms):
             term = term.split('/')[0]
         if '*' in term:
             term = term.replace('*', '')
+        if term == '':
+            continue
         numbers = mesh_records.get_numbers(term)
         if len(numbers) > 0:
             matching_terms.append(mesh_records.get_term(numbers[0])) # get the correctly capitalized term
             matching_numbers.extend(numbers)
-            
+
     return matching_terms, matching_numbers
 
 
-def print_str(*args):
-    n_string = ''
-    for element in args:
-        n_string += '"{0}",'.format(element)
-    n_string = n_string[:-1]
-    n_string += '\n'
-    return n_string
+def get_mesh_from_text(mesh_records, title, abstract):
+    terms = set()
+    text = title if title is not None else ''
+    text += abstract if abstract is not None else ''
+
+    text = text.translate(str.maketrans('', '', string.punctuation))
+    tokens = [w.lower() for w in word_tokenize(text)]
+    if '' in tokens:
+        token.remove('')
+    for i in range(len(tokens)):
+        try:
+            numbers = mesh_records.get_numbers('{0} {1}'.format(tokens[i], tokens[i+1]))
+            if numbers != []:
+                terms.add(mesh_records.get_term(numbers[0]))
+                continue
+            numbers = mesh_records.get_numbers(tokens[i])
+            if numbers != []:
+                terms.add(mesh_records.get_term(numbers[0]))
+                continue
+        except IndexError:
+            numbers = mesh_records.get_numbers(tokens[i])
+            if numbers != []:
+                terms.add(mesh_records.get_term(numbers[0]))
+                continue
+
+    return list(terms)
 
 
 def main():
@@ -192,7 +224,7 @@ def main():
         fetch_records = parse(handle=records_handle)
 
         # initializing variables
-        mesh_records = records.get_mesh_records()
+        mesh_records = records.get_mesh_records('template/2019MeshFull.csv')
 
         # contains all the metadata elements on the author level: PubMed unique Identifier number(PMID), AuthorID (as a
         # (CA) Ordinary Author (OA) or Principal Author (PA) and the author's affiliation
@@ -251,6 +283,11 @@ def main():
                 all_terms.extend(other_terms if other_terms is not None else [])
 
                 mesh_terms, mesh_numbers = convert_mesh_description(mesh_records, all_terms)
+
+                all_terms.extend(mesh_terms)
+                all_terms.extend(get_mesh_from_text(mesh_records, title, abstract))
+
+                all_terms = set(all_terms) # remove duplicates
                 mesh_terms = ';'.join(mesh_terms)
                 mesh_numbers = ';'.join(mesh_numbers)
 
@@ -319,12 +356,93 @@ def main():
         medical_record_df.to_excel('record_results/medical_record.xlsx', sheet_name='medical_record', index=False)
         medical_record_df.to_csv('record_results/medical_record.csv', index=False)
 
-        # store the record in a file for processing
-        dataset = dict()
-        dataset['title'] = title_list
-        dataset['abstracts'] = abstract_list
-        dataset = pd.DataFrame(dataset)
-        dataset.to_csv(path_or_buf='record_results/titles_abstracts.csv', index=False)
+
+    if args.analyze:
+        # analyze similarity of publications based on their subject list
+        project_path = Path(os.getcwd())
+        template_path = Path(project_path, 'template')
+        data_path = Path(project_path, 'record_results')
+        similarities_path = Path(data_path, 'similarities')
+
+        publications = pd.read_csv(Path(data_path, 'paper_record.csv'))
+        publications.head()
+
+        # preprocessing: remove stop words, set to lower case, lemmatize
+        gen_docs = []
+        stop_words = set(stopwords.words('english'))
+        stop_words.add('')
+        lemmatizer = WordNetLemmatizer()
+        for subject in publications.subject_list:
+            text_tmp = str(subject).replace(';', ' ').translate(str.maketrans('', '', string.punctuation))
+            tokens = [w.lower() for w in word_tokenize(text_tmp)]
+            doc = [lemmatizer.lemmatize(i) for i in tokens if not i in stop_words]
+            gen_docs.append(doc)
+
+        print(gen_docs[:5])
+
+        # create a dict of enntry to pmid
+        pmids = {}
+        for idx, pmid in enumerate(publications.PMID):
+            pmids[idx] = pmid
+
+        # create a dictionary to match tokens to integers
+        dictionary = gensim.corpora.Dictionary(gen_docs)
+        print(dictionary[5])
+        print("Number of words in dictionary:",len(dictionary))
+
+        # lists the number of times each word occurs in the document
+        # list of tuples
+            # first = index of the word
+            # second = number of time that appears in that document
+        corpus = [dictionary.doc2bow(gen_doc) for gen_doc in gen_docs]
+
+        # number of unique tokens in the first document
+        len(corpus[0])
+
+
+        # <pre>
+        # term frequency inverse term frequency (tf-idf):
+        #     term frequency = how often a word shows up in a document
+        #     inverse document frequency = scale that value by how rare the word is in the corpus
+        #     
+
+        tf_idf = gensim.models.TfidfModel(corpus)
+        print(tf_idf)
+        s = 0
+        for i in corpus:
+            s += len(i)
+        print(s)
+        # num_nnz = number of tokens
+
+        index = gensim.similarities.Similarity(str(similarities_path),
+                                            tf_idf[corpus], 
+                                            num_features=len(dictionary)) 
+        query = next(iter(corpus))
+        result = index[query]  # search similar to `query` in index
+
+        # yield similarities of the indexed documents
+        similarities_df = pd.DataFrame()
+
+        # with Path(similarities_path, 'document_similarities.csv').open(mode='w+') as out_file:
+        #     writer = csv.writer(out_file, delimiter=',')
+        for doc_sim_ix, doc_sim in enumerate(index):
+                pmid = pmids[doc_sim_ix]
+
+                sorted_sim = sorted(list(enumerate(doc_sim)), key=lambda x:x[1], reverse=True)
+
+                sims_with_pmids = []
+                for idx, sim in sorted_sim[:100]:
+                    sim_pmid = pmids[idx]
+                    sims_with_pmids.append('{0},{1}'.format(sim_pmid, sim))
+
+                sims_with_pmids = ";".join(sims_with_pmids)
+                data = [pmid]
+                data.append(sims_with_pmids)
+
+                row = pd.DataFrame([data])
+                similarities_df = similarities_df.append(row, ignore_index=True)
+
+        similarities_df.to_csv(Path(similarities_path, 'document_similarities.csv'),index=False)
 
     logging.getLogger('line.regular.time.line').info('SCOSY finished running successfully.')
 

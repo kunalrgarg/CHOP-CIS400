@@ -151,6 +151,8 @@ def get_publication_records():
         csv_reader = csv.reader(pub_csv, delimiter=',')
         for row in csv_reader:
             publication = get_publication(row)
+            if '' in publication.mesh_terms:
+                publication.mesh_terms.remove('')
             publication.mesh_numbers = mesh_data[publication.id] if publication.id in mesh_data else []
             publications[publication.id] = publication
 
@@ -190,10 +192,10 @@ def get_mesh(row):
     return mesh
 
 
-def get_mesh_records():
+def get_mesh_records(filepath = 'server/template/2019MeshFull.csv'):
     mesh_tree = []
     print(os.getcwd())
-    with open('server/template/2019MeshFull.csv') as mesh_tree_csv:
+    with open(filepath) as mesh_tree_csv:
         csv_reader = csv.reader(mesh_tree_csv, delimiter=',')
         for row in csv_reader:
             mesh = get_mesh(row)

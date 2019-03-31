@@ -30,10 +30,9 @@ def recommend_collaborators(author, author_records, publication_records):
         for uid in collaborators:
             if uid not in total_weight and uid not in existing_collaborators:
                 collaborator = authors[uid]
-                total_weight[uid] = Collaborator(collaborator, weight * 0.5)
+                total_weight[uid] = Collaborator(collaborator, weight * 0.25)
                 new_collaborators.add(collaborator)
         collaborators = records.collaborators(new_collaborators)
-
 
     # recommendation weight based off of publication similarity
     publications = publication_records
@@ -56,7 +55,7 @@ def recommend_collaborators(author, author_records, publication_records):
     
     # # combine the two recommendations
     for uid in publication_weight:
-        publication_weight[uid].weight *= 0.5
+        publication_weight[uid].weight *= 0.75
         if uid in total_weight:
             total_weight[uid].weight = total_weight[uid].weight + publication_weight[uid].weight
         else:
