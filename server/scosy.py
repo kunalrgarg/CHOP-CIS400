@@ -6,6 +6,18 @@ from utils.parse import parse
 import argparse
 import pandas as pd
 import pandas.io.formats.excel
+import utils.records as records
+from pathlib import Path
+import os
+import nltk
+nltk.download('stopwords')
+nltk.download('wordnet')
+from nltk.tokenize import word_tokenize 
+from nltk.stem import WordNetLemmatizer
+from nltk.corpus import stopwords
+import gensim
+import string
+
 
 class Author:
     def __init__(self, name, pmid, role, penn, chop, affiliations, uid):
@@ -40,24 +52,6 @@ class Author:
         self.affiliations.extend(other.affiliations)
         self.penn = self.penn or other.penn
         self.chop = self.chop or other.chop
-
-
-def obtain_descriptions():
-
-    # get the description, related to the MESH, in the 2017MeshTree.csv File
-    mesh_tree_file_object = open('template/2017MeshTree.csv')
-    file_reader = csv.reader(mesh_tree_file_object, delimiter=',')
-    mesh_description_dict = dict()
-    mesh_number_dict = dict()
-
-    logging.getLogger('regular').info('processing each record and obtaining relevant information')
-    for line in file_reader:
-        # split_line[0] = Number, split_line[1] = Description and split_line[2] = MESH
-        mesh_description_dict[line[2]] = line[1]
-        mesh_number_dict[line[1]] = line[0]
-    mesh_tree_file_object.close()
-    
-    return mesh_description_dict, mesh_number_dict
 
 
 def assign_roles(author_list):
@@ -114,53 +108,54 @@ def assign_organization(affiliation_list):
     return chop_list, penn_list
 
 
-def convert_mesh_description(mesh_term_description_dict, mesh_term):
+def convert_mesh_description(mesh_records, mesh_terms):
     """
-    convert the mesh_term found for that paper to the mesh description from the 2017MeshTree.csv
-    :param mesh_term_description_dict: a dictionary where key=mesh term, value = mesh description
-    :param mesh_term: the mesh term(s) of the paper
-    :return: term, description: the term and its description
+    returns all valid mesh_terms and numbers from mesh_terms
     """
-    # fetch the description from the description obtain from the 2017MeshTree file
-    if len(mesh_term) > 1:
+    matching_terms = []
+    matching_numbers = []
+    for mesh in mesh_terms:
+        term = mesh
+        if '/' in term:
+            term = term.split('/')[0]
+        if '*' in term:
+            term = term.replace('*', '')
+        if term == '':
+            continue
+        numbers = mesh_records.get_numbers(term)
+        if len(numbers) > 0:
+            matching_terms.append(mesh_records.get_term(numbers[0])) # get the correctly capitalized term
+            matching_numbers.extend(numbers)
 
-        # because there are mesh_term that are not part of the 2017MeshTree, we have to loop through all
-        # of the mesh_term until one works i.e. the first one found in the 2017MeshTree
-        for mesh in mesh_term:
+    return matching_terms, matching_numbers
 
-            try:
-                term = mesh
 
-                # cleaning string
-                if '/' in term:
-                    term = term.split('/')[0]
-                if '*' in term:
-                    term = term.replace('*', '')
+def get_mesh_from_text(mesh_records, title, abstract):
+    terms = set()
+    text = title if title is not None else ''
+    text += abstract if abstract is not None else ''
 
-                logging.getLogger('regular').debug('term = {0}'.format(term))
-
-                description = mesh_term_description_dict[term]
-
-            except KeyError:
-                logging.getLogger('regular').debug('not found term = {0}'.format(term))
+    text = text.translate(str.maketrans('', '', string.punctuation))
+    tokens = [w.lower() for w in word_tokenize(text)]
+    if '' in tokens:
+        token.remove('')
+    for i in range(len(tokens)):
+        try:
+            numbers = mesh_records.get_numbers('{0} {1}'.format(tokens[i], tokens[i+1]))
+            if numbers != []:
+                terms.add(mesh_records.get_term(numbers[0]))
                 continue
-    else:
+            numbers = mesh_records.get_numbers(tokens[i])
+            if numbers != []:
+                terms.add(mesh_records.get_term(numbers[0]))
+                continue
+        except IndexError:
+            numbers = mesh_records.get_numbers(tokens[i])
+            if numbers != []:
+                terms.add(mesh_records.get_term(numbers[0]))
+                continue
 
-        if mesh_term not in mesh_term_description_dict.keys():
-            raise KeyError('mesh term = {0} not found'.format(mesh_term))
-        else:
-            description = mesh_term_description_dict[mesh_term]
-
-    return description, term
-
-
-def print_str(*args):
-    n_string = ''
-    for element in args:
-        n_string += '"{0}",'.format(element)
-    n_string = n_string[:-1]
-    n_string += '\n'
-    return n_string
+    return list(terms)
 
 
 def main():
@@ -229,7 +224,7 @@ def main():
         fetch_records = parse(handle=records_handle)
 
         # initializing variables
-        mesh_description_dict, mesh_number_dict = obtain_descriptions()
+        mesh_records = records.get_mesh_records('template/2019MeshFull.csv')
 
         # contains all the metadata elements on the author level: PubMed unique Identifier number(PMID), AuthorID (as a
         # (CA) Ordinary Author (OA) or Principal Author (PA) and the author's affiliation
@@ -238,10 +233,10 @@ def main():
         # contains all the metadata elements on the paper level: PubMed unique Identifier number(PMID), Title, Abstract,
         # Year, Month, AuthorList, SubjectList, date
         paper_record_df = pd.DataFrame(columns=['PMID', 'Title', 'Abstract', 'Year', 'Month', 'author_list',
-                                                'subject_list', 'date', 'author_ids'])
+                                                'MeSH Terms', 'subject_list', 'date', 'author_ids'])
         # contains all the metadata of the medical information: PubMed unique Identifier number(PMID), Primary Medical
         # Subject Header (MESH) and the description ID
-        medical_record_df = pd.DataFrame(columns=['PMID', 'Desc', 'Primary_MeSH', 'Num'])
+        medical_record_df = pd.DataFrame(columns=['PMID', 'Terms', 'Numbers'])
 
         author_list = list()
         title_list = list()
@@ -260,7 +255,10 @@ def main():
                 authors = record.get('FAU')
                 affiliations = record.get('AD')
                 publication_type = record.get('PT')
-                mesh_term = record.get('MH')
+                mesh_terms = record.get('MH')#.split(';'
+                other_terms = record.get('OT')
+                if other_terms is not None:
+                    other_terms = other_terms.split(';')
                 date_created = record.get('EDAT')
                 year, month = date_created.split('/')[:2]
                 date = year + '/' + month
@@ -271,7 +269,8 @@ def main():
                 logging.getLogger('regular').debug('authors = {0}'.format(authors))
                 logging.getLogger('regular').debug('affiliations = {0}'.format(affiliations))
                 logging.getLogger('regular').debug('publication type = {0}'.format(publication_type))
-                logging.getLogger('regular').debug('mesh term = {0}'.format(mesh_term))
+                logging.getLogger('regular').debug('mesh term = {0}'.format(mesh_terms))
+                logging.getLogger('regular').debug('other terms = {0}'.format(other_terms))
                 logging.getLogger('regular').debug('data created = {0}'.format(date_created))
 
                 # assign the chief author, ordinary author or principal investigator role to each author
@@ -279,19 +278,22 @@ def main():
                 # check and assign whether the authors belong to the CHOP or PENN organization
                 chop_organization, penn_organization = assign_organization(affiliations)
 
-                mesh_description = ''
-                mesh_number = ''
-                if mesh_term is None:
-                    mesh_term = ''
-                else:
-                    mesh_description, term = convert_mesh_description(mesh_description_dict, mesh_term)
-                    mesh_term = ';'.join(mesh_term)
+                # get mesh information from mesh terms and other terms
+                all_terms = mesh_terms if mesh_terms is not None else []
+                all_terms.extend(other_terms if other_terms is not None else [])
+
+                mesh_terms, mesh_numbers = convert_mesh_description(mesh_records, all_terms)
+
+                all_terms.extend(mesh_terms)
+                all_terms.extend(get_mesh_from_text(mesh_records, title, abstract))
+
+                all_terms = set(all_terms) # remove duplicates
+                mesh_terms = ';'.join(mesh_terms)
+                mesh_numbers = ';'.join(mesh_numbers)
 
                 # mesh information
-                if mesh_description:
-                    mesh_number = mesh_number_dict[mesh_description]
-                    row = pd.DataFrame([[pmid, term, mesh_description, mesh_number]], columns=['PMID', 'Primary_MeSH', 'Desc', 'Num'])
-                    medical_record_df = medical_record_df.append(row, ignore_index=True)
+                row = pd.DataFrame([[pmid, mesh_terms, mesh_numbers]], columns=['PMID', 'Terms', 'Numbers'])
+                medical_record_df = medical_record_df.append(row, ignore_index=True)
 
                 # author information
                 author_ids = []
@@ -316,8 +318,8 @@ def main():
                 author_ids = ';'.join(author_ids)
 
                 # publication information
-                row = pd.DataFrame([[pmid, title, abstract, year, month, authors, mesh_term, date, author_ids]],
-                    columns=['PMID', 'Title', 'Abstract', 'Year', 'Month', 'author_list', 'subject_list',
+                row = pd.DataFrame([[pmid, title, abstract, year, month, authors, mesh_terms, ';'.join(all_terms), date, author_ids]],
+                    columns=['PMID', 'Title', 'Abstract', 'Year', 'Month', 'author_list', 'MeSH Terms', 'subject_list',
                             'date', 'author_ids'])
                 paper_record_df = paper_record_df.append(row)
 
@@ -354,12 +356,93 @@ def main():
         medical_record_df.to_excel('record_results/medical_record.xlsx', sheet_name='medical_record', index=False)
         medical_record_df.to_csv('record_results/medical_record.csv', index=False)
 
-        # store the record in a file for processing
-        dataset = dict()
-        dataset['title'] = title_list
-        dataset['abstracts'] = abstract_list
-        dataset = pd.DataFrame(dataset)
-        dataset.to_csv(path_or_buf='record_results/titles_abstracts.csv', index=False)
+
+    if args.analyze:
+        # analyze similarity of publications based on their subject list
+        project_path = Path(os.getcwd())
+        template_path = Path(project_path, 'template')
+        data_path = Path(project_path, 'record_results')
+        similarities_path = Path(data_path, 'similarities')
+
+        publications = pd.read_csv(Path(data_path, 'paper_record.csv'))
+        publications.head()
+
+        # preprocessing: remove stop words, set to lower case, lemmatize
+        gen_docs = []
+        stop_words = set(stopwords.words('english'))
+        stop_words.add('')
+        lemmatizer = WordNetLemmatizer()
+        for subject in publications.subject_list:
+            text_tmp = str(subject).replace(';', ' ').translate(str.maketrans('', '', string.punctuation))
+            tokens = [w.lower() for w in word_tokenize(text_tmp)]
+            doc = [lemmatizer.lemmatize(i) for i in tokens if not i in stop_words]
+            gen_docs.append(doc)
+
+        print(gen_docs[:5])
+
+        # create a dict of enntry to pmid
+        pmids = {}
+        for idx, pmid in enumerate(publications.PMID):
+            pmids[idx] = pmid
+
+        # create a dictionary to match tokens to integers
+        dictionary = gensim.corpora.Dictionary(gen_docs)
+        print(dictionary[5])
+        print("Number of words in dictionary:",len(dictionary))
+
+        # lists the number of times each word occurs in the document
+        # list of tuples
+            # first = index of the word
+            # second = number of time that appears in that document
+        corpus = [dictionary.doc2bow(gen_doc) for gen_doc in gen_docs]
+
+        # number of unique tokens in the first document
+        len(corpus[0])
+
+
+        # <pre>
+        # term frequency inverse term frequency (tf-idf):
+        #     term frequency = how often a word shows up in a document
+        #     inverse document frequency = scale that value by how rare the word is in the corpus
+        #     
+
+        tf_idf = gensim.models.TfidfModel(corpus)
+        print(tf_idf)
+        s = 0
+        for i in corpus:
+            s += len(i)
+        print(s)
+        # num_nnz = number of tokens
+
+        index = gensim.similarities.Similarity(str(similarities_path),
+                                            tf_idf[corpus], 
+                                            num_features=len(dictionary)) 
+        query = next(iter(corpus))
+        result = index[query]  # search similar to `query` in index
+
+        # yield similarities of the indexed documents
+        similarities_df = pd.DataFrame()
+
+        # with Path(similarities_path, 'document_similarities.csv').open(mode='w+') as out_file:
+        #     writer = csv.writer(out_file, delimiter=',')
+        for doc_sim_ix, doc_sim in enumerate(index):
+                pmid = pmids[doc_sim_ix]
+
+                sorted_sim = sorted(list(enumerate(doc_sim)), key=lambda x:x[1], reverse=True)
+
+                sims_with_pmids = []
+                for idx, sim in sorted_sim[:100]:
+                    sim_pmid = pmids[idx]
+                    sims_with_pmids.append('{0},{1}'.format(sim_pmid, sim))
+
+                sims_with_pmids = ";".join(sims_with_pmids)
+                data = [pmid]
+                data.append(sims_with_pmids)
+
+                row = pd.DataFrame([data])
+                similarities_df = similarities_df.append(row, ignore_index=True)
+
+        similarities_df.to_csv(Path(similarities_path, 'document_similarities.csv'),index=False)
 
     logging.getLogger('line.regular.time.line').info('SCOSY finished running successfully.')
 

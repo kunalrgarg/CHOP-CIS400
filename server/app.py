@@ -19,14 +19,25 @@ def get_statistics(authors, publications):
     statistics['author_count'] = len(authors)
     statistics['publication_count'] = len(publications)
     statistics['mesh_terms'] = {}
+    mesh_record = records.get_mesh_records()
     for publication in publications:
-        term = publication['mesh']['term']
-        if term == '':
-             continue
-        if term in statistics['mesh_terms']:
-            statistics['mesh_terms'][term] += 1
-        else:
-            statistics['mesh_terms'][term] = 1
+        terms = publication['mesh_terms']
+        for term in terms:
+            numbers = mesh_record.get_numbers(term)
+            for number in numbers:
+                parts = number.split('.')
+                # get top level mesh term
+                top_level = records.get_top_level_term(parts[0][0])
+                try:
+                    statistics['mesh_terms'][top_level] += 1
+                except KeyError:
+                    statistics['mesh_terms'][top_level] = 1
+                for i in range(0, len(parts)):
+                    term = mesh_record.get_term(parts[:i])
+                    try:
+                        statistics['mesh_terms'][term] += 1
+                    except KeyError:
+                        statistics['mesh_terms'][term] = 1
     return statistics
 
 def get_author_data(publications):
@@ -79,18 +90,19 @@ def search_by_mesh(term):
     '''Returns all publications that have a matching MeSH term and all of their authors'''
 
     term = term.lower()
-    mesh_num = ''
-    for mesh in records.get_mesh_records():
-        if term == mesh.term.lower():
-            mesh_num = mesh.num
+    numbers = []
+    mesh_record = records.get_mesh_records()
+    numbers = mesh_record.get_numbers(term)
 
-    if mesh_num == '':
+    if numbers == []:
         return jsonify([{'statistics': [], 'authors': [], 'publications': []}])
 
     publications = []
     for pmid, publication in records.get_publication_records().items():
-        if mesh_num in publication.mesh.num:
-            publications.append(publication.to_dict())
+        for number in numbers:
+            if number in publication.mesh_numbers:
+                publications.append(publication.to_dict())
+                break
     
     # get author data
     authors = get_author_data(publications)
@@ -182,6 +194,10 @@ def get_recommendations(author_uid):
     else:
         return jsonify({'collaborators': []})
 
+
+@app.route('/api/mesh')
+def get_mesh_tree():
+    return jsonify(records.read_mesh_json())
 ##
 # View route
 ##

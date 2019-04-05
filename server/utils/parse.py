@@ -94,7 +94,7 @@ def parse(handle):
     """
 
     # These keys point to string values
-    textkeys = ("ID", "PMID", "SO", "RF", "NI", "JC", "TA", "IS", "CY", "TT",
+    textkeys = ("ID", "PMID", "SO", "RF", "NI", "OT", "JC", "TA", "IS", "CY", "TT",
                 "CA", "IP", "VI", "DP", "YR", "PG", "LID", "DA", "LR", "OWN",
                 "STAT", "DCOM", "PUBM", "DEP", "PL", "JID", "SB", "PMC",
                 "EDAT", "MHDA", "PST", "AB", "AD", "EA", "TI", "JT")
@@ -165,6 +165,8 @@ def parse(handle):
                     if key == 'AD':
                         # Flatten the list of affiliations to "remove the brackets" using a nested list comprehension
                         record[key] = [element for sub_list in record[key] for element in sub_list]
+                    elif key == 'OT' or key == 'MH':
+                        record[key] = ';'.join(record[key])
                     else:
                         record[key] = " ".join(record[key])
             yield record
@@ -176,6 +178,8 @@ def parse(handle):
                 if key == 'AD':
                     # Flatten the list of affiliations to "remove the brackets" using a nested list comprehension
                     record[key] = [element for sub_list in record[key] for element in sub_list]
+                elif key == 'OT' or key == 'MH':
+                    record[key] = ';'.join(record[key])
                 else:
                     record[key] = " ".join(record[key])
         yield record

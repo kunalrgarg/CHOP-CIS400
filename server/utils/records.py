@@ -1,9 +1,11 @@
 import csv
+import os
+import json
 
 class Author:
     def __init__(self):
         self.id = ''
-        self.pmids = []
+        self.pmids = [] 
         self.name = ''
         self.chop = False
         self.penn = False
@@ -54,10 +56,11 @@ class Publication:
         self.year = 0
         self.month = 0
         self.author_list = []
+        self.mesh_terms = []
         self.subject_list = []
         self.author_ids = []
         self.date = ''
-        self.mesh = Mesh()
+        self.mesh_numbers = []
 
     def to_dict(self):
         d = {}
@@ -69,45 +72,56 @@ class Publication:
         d['author_list'] = self.author_list
         d['author_ids'] = self.author_ids
         d['date'] = self.date
-        d['mesh'] = self.mesh.to_dict()
+        d['mesh_terms'] = self.mesh_terms
         return d
-
 
 class Mesh:
     def __init__(self):
-        self.num = ''
-        self.desc = ''
-        self.term = ''
+        self.term = ''      # main meash term
+        self.numbers = []    # list of mesh descriptor numbers (the same term could have multiple hiearchy locations)
+        self.entries = []   # list of other acceptable terms for this one (synonymous)
 
 
-    def distance(self, other):
-        if self.num == '' or other.num == '':
-            return -1
-        this_mesh = self.num.split('.')
-        that_mesh = other.num.split('.')
-        if (len(this_mesh) == 0 or len(that_mesh) == 0):
-            return -1
-        if (this_mesh[0] != that_mesh[0]):  # different branches
-            return -1
-        for i in range(min(len(this_mesh), len(that_mesh))):
-            if this_mesh[i] != that_mesh[i]:
-                return len(this_mesh) - i
-        if len(this_mesh) > len(that_mesh):
-            return len(this_mesh) - len(that_mesh)
-        else:
-            return 0
+class MeshRecords:
+    def __init__(self, mesh_terms):
+        term_to_num_dict = {}
+        num_to_term_dict = {}
+        for mesh in mesh_terms:
+            for number in mesh.numbers:
+                num_to_term_dict[number] = mesh.term
+            for entry in mesh.entries:
+                term_to_num_dict[entry.lower()] = mesh.numbers
+            term_to_num_dict[mesh.term.lower()] = mesh.numbers
+        
+        self.term_to_num_dict = term_to_num_dict
+        self.num_to_term_dict = num_to_term_dict
+        self.values = mesh_terms
+
+
+    def get_term(self, number):
+        try:
+            return self.num_to_term_dict[number]
+        except KeyError:
+            return ''
+
+
+    def get_numbers(self, term):
+        try:
+            return self.term_to_num_dict[term.lower()]
+        except KeyError:
+            return []
 
 
     def to_dict(self):
         d = {}
-        d['num'] = self.num
-        d['desc'] = self.desc
+        d['numbers'] = self.numbers
+        d['entries'] = self.entries
         d['term'] = self.term
         return d
 
 
 # returns a Publication from a given entry in the paper_record.csv
-# PMID, Title, Abstract, Year, Month, author_list, subject_list, date
+# PMID, Title, Abstract, Year, Month, author_list, MeSH terms, subject_list, date
 def get_publication(entry):
     publication = Publication()
     publication.id = entry[0]
@@ -116,9 +130,10 @@ def get_publication(entry):
     publication.year = entry[3]
     publication.month = entry[4]
     publication.author_list = entry[5].split(';')
-    publication.subject_list = entry[6].split(';')
-    publication.date = entry[7]
-    publication.author_ids = entry[8].split(';')
+    publication.mesh_terms = entry[6].split(';')
+    publication.subject_list = entry[7].split(';')
+    publication.date = entry[8]
+    publication.author_ids = entry[9].split(';')
     return publication
 
 
@@ -126,22 +141,20 @@ def get_publication(entry):
 def get_publication_records():
     # { publciation id : Mesh }
     mesh_data = {}
-    # Desc, Num, PMID, Primary_MeSH
+    # PMID, [terms], [numbers]
     with open('server/record_results/medical_record.csv') as mesh_csv:
         csv_reader = csv.reader(mesh_csv, delimiter=',')
         for row in csv_reader:
-            mesh = Mesh()
-            mesh.desc = row[0]
-            mesh.num = row[1]
-            mesh.term = row[3]
-            mesh_data[row[2]] = mesh
+            mesh_data[row[0]] = row[2].split(';')
 
     publications = {}
     with open('server/record_results/paper_record.csv') as pub_csv:
         csv_reader = csv.reader(pub_csv, delimiter=',')
         for row in csv_reader:
             publication = get_publication(row)
-            publication.mesh = mesh_data[publication.id] if publication.id in mesh_data else Mesh()
+            if '' in publication.mesh_terms:
+                publication.mesh_terms.remove('')
+            publication.mesh_numbers = mesh_data[publication.id] if publication.id in mesh_data else []
             publications[publication.id] = publication
 
     return publications
@@ -174,42 +187,69 @@ def get_author_records():
 
 def get_mesh(row):
     mesh = Mesh()
-    mesh.num = row[0]
+    mesh.numbers = row[0].split(';')
+    while '' in mesh.numbers:
+        mesh.numbers.remove('')
     mesh.term = row[1]
+    mesh.entries = row[2].split(';')
     return mesh
 
 
-def get_mesh_records():
+def get_mesh_records(filepath = 'server/template/2019MeshFull.csv'):
     mesh_tree = []
-    with open('server/template/2019MeshTree.csv') as mesh_tree_csv:
+    print(os.getcwd())
+    with open(filepath) as mesh_tree_csv:
         csv_reader = csv.reader(mesh_tree_csv, delimiter=',')
         for row in csv_reader:
             mesh = get_mesh(row)
             mesh_tree.append(mesh)
-    return mesh_tree
+    return MeshRecords(mesh_tree)
+
+def get_top_level_term(number):
+        if number == 'A':
+            return 'Anatomy'
+        if number == 'B':
+            return 'Organisms'
+        if number == 'C':
+            return 'Diseases'
+        if number == 'D':
+            return 'Chemicals and Drugs'
+        if number == 'E':
+            return 'Analytical, Diagnostic and Therapeutic Techniques, and Equipment'
+        if number == 'F':
+            return 'Psychiatry and Psychology'
+        if number == 'G':
+            return 'Phenomena and Processes'
+        if number == 'H':
+            return 'Disciplines and Occupations'
+        if number == 'I':
+            return 'Anthropology, Education, Sociology, and Social Phenomena'
+        if number == 'J':
+            return 'Technology, Industry, and Agriculture'
+        if number == 'K':
+            return 'Humanities'
+        if number == 'L':
+            return 'Information Science'
+        if number == 'M':
+            return 'Named Groups'
+        if number == 'N':
+            return 'Health Care'
+        if number == 'V':
+            return 'Publication Characteristics'
+        if number == 'Z':
+            return 'Geographicals'
+        raise Exception('Top Level Mesh Not found for {0}'.format(number))
 
 
-def get_mesh_tree():
-    root = {'name': 'Mesh Tree', 'number': '', 'children': []}
-    with open('server/template/2019MeshTree.csv') as mesh_tree_csv:
-        csv_reader = csv.reader(mesh_tree_csv, delimiter=',')
-        for row in csv_reader:
-            mesh = get_mesh(row)
-            parent = root
-            numbers = mesh.num.split('.')
-            for number in numbers:
-                found = False
-                for child in parent['children']:
-                    if number == child['number']:
-                        parent = child
-                        found = True
-                        break
-                if not found:
-                    child = {'name': mesh.term, 'number': number, 'children': []}
-                    parent['children'].append(child)
-                    break
-
-    return root
+def read_mesh_json(number):
+    try:
+        with open('server/template/mesh_subtrees/{0}.json'.format(get_top_level_term(number))) as json_file:
+            data = json.load(json_file)
+            return data
+    except:
+        with open('server/template/2019MeshTree.json') as json_file:
+            data = json.load(json_file)
+            return data
 
 
 class PublicationSimilarities:
