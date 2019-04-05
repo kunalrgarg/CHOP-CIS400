@@ -1,5 +1,6 @@
 import csv
 import os
+import json
 
 class Author:
     def __init__(self):
@@ -187,6 +188,8 @@ def get_author_records():
 def get_mesh(row):
     mesh = Mesh()
     mesh.numbers = row[0].split(';')
+    while '' in mesh.numbers:
+        mesh.numbers.remove('')
     mesh.term = row[1]
     mesh.entries = row[2].split(';')
     return mesh
@@ -202,28 +205,51 @@ def get_mesh_records(filepath = 'server/template/2019MeshFull.csv'):
             mesh_tree.append(mesh)
     return MeshRecords(mesh_tree)
 
+def get_top_level_term(number):
+        if number == 'A':
+            return 'Anatomy'
+        if number == 'B':
+            return 'Organisms'
+        if number == 'C':
+            return 'Diseases'
+        if number == 'D':
+            return 'Chemicals and Drugs'
+        if number == 'E':
+            return 'Analytical, Diagnostic and Therapeutic Techniques, and Equipment'
+        if number == 'F':
+            return 'Psychiatry and Psychology'
+        if number == 'G':
+            return 'Phenomena and Processes'
+        if number == 'H':
+            return 'Disciplines and Occupations'
+        if number == 'I':
+            return 'Anthropology, Education, Sociology, and Social Phenomena'
+        if number == 'J':
+            return 'Technology, Industry, and Agriculture'
+        if number == 'K':
+            return 'Humanities'
+        if number == 'L':
+            return 'Information Science'
+        if number == 'M':
+            return 'Named Groups'
+        if number == 'N':
+            return 'Health Care'
+        if number == 'V':
+            return 'Publication Characteristics'
+        if number == 'Z':
+            return 'Geographicals'
+        raise Exception('Top Level Mesh Not found for {0}'.format(number))
 
-def get_mesh_tree():
-    root = {'name': 'Mesh Tree', 'number': '', 'children': []}
-    with open('server/template/2019MeshTree.csv') as mesh_tree_csv:
-        csv_reader = csv.reader(mesh_tree_csv, delimiter=',')
-        for row in csv_reader:
-            mesh = get_mesh(row)
-            parent = root
-            numbers = mesh.num.split('.')
-            for number in numbers:
-                found = False
-                for child in parent['children']:
-                    if number == child['number']:
-                        parent = child
-                        found = True
-                        break
-                if not found:
-                    child = {'name': mesh.term, 'number': number, 'children': []}
-                    parent['children'].append(child)
-                    break
 
-    return root
+def read_mesh_json(number):
+    try:
+        with open('server/template/mesh_subtrees/{0}.json'.format(get_top_level_term(number))) as json_file:
+            data = json.load(json_file)
+            return data
+    except:
+        with open('server/template/2019MeshTree.json') as json_file:
+            data = json.load(json_file)
+            return data
 
 
 class PublicationSimilarities:
