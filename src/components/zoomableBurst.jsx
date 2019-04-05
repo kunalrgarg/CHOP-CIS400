@@ -1,6 +1,6 @@
 import React, { Component } from 'react';
 import * as d3 from 'd3';
-const data = require('./flare.json');
+const data = require('./2019MeshTree.json');
 
 
 
