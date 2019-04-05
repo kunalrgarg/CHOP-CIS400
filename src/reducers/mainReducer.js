@@ -12,10 +12,6 @@ const mainReducer = (state = initialState, action) => {
       return Object.assign({}, state, {
         searchTerm: action.newSearchTerm,
       });
-    case 'UPDATE_SEARCH_TYPE':
-      return Object.assign({}, state, {
-        searchType: action.newSearchType,
-      });
     case 'REQUEST_SEARCH_SENT':
       return Object.assign({}, state, {
         inProgress: true,
