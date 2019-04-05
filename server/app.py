@@ -19,25 +19,25 @@ def get_statistics(authors, publications):
     statistics['author_count'] = len(authors)
     statistics['publication_count'] = len(publications)
     statistics['mesh_terms'] = {}
-    mesh_record = records.get_mesh_records()
-    for publication in publications:
-        terms = publication['mesh_terms']
-        for term in terms:
-            numbers = mesh_record.get_numbers(term)
-            for number in numbers:
-                parts = number.split('.')
-                # get top level mesh term
-                top_level = records.get_top_level_term(parts[0][0])
-                try:
-                    statistics['mesh_terms'][top_level] += 1
-                except KeyError:
-                    statistics['mesh_terms'][top_level] = 1
-                for i in range(0, len(parts)):
-                    term = mesh_record.get_term(parts[:i])
-                    try:
-                        statistics['mesh_terms'][term] += 1
-                    except KeyError:
-                        statistics['mesh_terms'][term] = 1
+    # mesh_record = records.get_mesh_records()
+    # for publication in publications:
+    #     terms = publication['mesh_terms']
+    #     for term in terms:
+    #         numbers = mesh_record.get_numbers(term)
+    #         for number in numbers:
+    #             parts = number.split('.')
+    #             # get top level mesh term
+    #             top_level = records.get_top_level_term(parts[0][0])
+    #             try:
+    #                 statistics['mesh_terms'][top_level] += 1
+    #             except KeyError:
+    #                 statistics['mesh_terms'][top_level] = 1
+    #             for i in range(0, len(parts)):
+    #                 term = mesh_record.get_term(parts[:i])
+    #                 try:
+    #                     statistics['mesh_terms'][term] += 1
+    #                 except KeyError:
+    #                     statistics['mesh_terms'][term] = 1
     return statistics
 
 def get_author_data(publications):

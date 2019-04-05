@@ -368,7 +368,7 @@ def main():
         publications.head()
 
         # preprocessing: remove stop words, set to lower case, lemmatize
-        gen_docs = []
+        subject_lists = []
         stop_words = set(stopwords.words('english'))
         stop_words.add('')
         lemmatizer = WordNetLemmatizer()
@@ -376,17 +376,20 @@ def main():
             text_tmp = str(subject).replace(';', ' ').translate(str.maketrans('', '', string.punctuation))
             tokens = [w.lower() for w in word_tokenize(text_tmp)]
             doc = [lemmatizer.lemmatize(i) for i in tokens if not i in stop_words]
-            gen_docs.append(doc)
+            subject_lists.append(doc)
 
-        print(gen_docs[:5])
 
+        gen_docs = []
+        stop_words = set(stopwords.words('english'))
+        stop_words.union(['abstract', 'aim', 'aims', 'background', 'context', 'hypothesis', 'introduction', 'importance', 
+                          'method', 'methods', 'motivation', 'motivations', 'objective', 'objectives', 'study', 'purpose', 'review'])
         # create a dict of enntry to pmid
         pmids = {}
         for idx, pmid in enumerate(publications.PMID):
             pmids[idx] = pmid
 
         # create a dictionary to match tokens to integers
-        dictionary = gensim.corpora.Dictionary(gen_docs)
+        dictionary = gensim.corpora.Dictionary(subject_lists)
         print(dictionary[5])
         print("Number of words in dictionary:",len(dictionary))
 
@@ -394,25 +397,9 @@ def main():
         # list of tuples
             # first = index of the word
             # second = number of time that appears in that document
-        corpus = [dictionary.doc2bow(gen_doc) for gen_doc in gen_docs]
-
-        # number of unique tokens in the first document
-        len(corpus[0])
-
-
-        # <pre>
-        # term frequency inverse term frequency (tf-idf):
-        #     term frequency = how often a word shows up in a document
-        #     inverse document frequency = scale that value by how rare the word is in the corpus
-        #     
+        corpus = [dictionary.doc2bow(subject_list) for subject_list in subject_lists]
 
         tf_idf = gensim.models.TfidfModel(corpus)
-        print(tf_idf)
-        s = 0
-        for i in corpus:
-            s += len(i)
-        print(s)
-        # num_nnz = number of tokens
 
         index = gensim.similarities.Similarity(str(similarities_path),
                                             tf_idf[corpus], 
