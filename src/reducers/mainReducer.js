@@ -1,7 +1,7 @@
 
 const initialState = {
   searchTerm: '',
-  searchType: 'General Keyword',
+  searchType: 'keyword',
   results: null,
   inProgress: false,
   errorMessage: null,

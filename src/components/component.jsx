@@ -3,6 +3,7 @@ import * as RB from 'react-bootstrap';
 import ZoomableBurst from './zoomableBurst';
 
 
+
 class Index extends Component {
 
   render() {
@@ -45,6 +46,32 @@ class Index extends Component {
       </RB.ButtonToolbar>
     );
 
+    const searchResultComponent = (results ?  
+      <div>
+      <h4>
+        Results:
+      </h4>
+      <table>
+        <tr>
+          <td>Name</td>
+          <td>id</td>
+          <td>roles</td>
+        </tr>
+      </table>
+      <table>
+        <tbody>
+          {results['authors'].map(function(item, key) {
+            return (
+              <tr key = {key}>
+              <td>{item.name}</td>
+              <td>{item.id}</td>
+              <td>{item.roles}</td>
+            </tr>
+            )
+          })}
+        </tbody>
+      </table></div> : <h1>no results</h1>);
+
 
     return (
       <div>
@@ -83,7 +110,7 @@ class Index extends Component {
                 </RB.FormGroup>
                 <RB.Button onClick={() => requestSearch(searchTerm, searchType)}>Submit</RB.Button>
                 <hr/>
-                {results ? JSON.stringify(results) : <svg width={800} height={800}></svg>}
+                {results ? searchResultComponent : <svg width={800} height={800}></svg>}  
               </form>
             </RB.Col>
             <RB.Col xs={4} md={2} />
