@@ -95,3 +95,4 @@ server/__pycache__/
 server/utils/__pycache__
 
 venv/
+server/record_results/paper_record.csv
