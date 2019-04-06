@@ -7,8 +7,8 @@ export const updateSearchTerm = (newSearchTerm) => ({
 });
 
 export const updateSearchType = (newSearchType) => ({
-    type: 'UPDATE_SEARCH_TYPE',
-    newSearchType
+  type: 'UPDATE_SEARCH_TYPE',
+  newSearchType
 });
 
 export const requestSearchSent = () => ({

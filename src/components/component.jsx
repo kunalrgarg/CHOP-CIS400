@@ -18,12 +18,12 @@ class Index extends Component {
       return (
         <RB.DropdownButton
           bsStyle={title.toLowerCase()}
-          title={'Type'}
+          title={searchType}
           key={i}
           id={`dropdown-basic-${i}`}>
           <RB.MenuItem eventKey="Mesh"
             onSelect={onSelectAlert}>
-              MeSH</RB.MenuItem>
+              MesH</RB.MenuItem>
           <RB.MenuItem eventKey="Author"
             onSelect={onSelectAlert}>
               Author</RB.MenuItem>
@@ -83,7 +83,7 @@ class Index extends Component {
                 </RB.FormGroup>
                 <RB.Button onClick={() => requestSearch(searchTerm, searchType)}>Submit</RB.Button>
                 <hr/>
-                <svg width={800} height={800}></svg>
+                {results ? JSON.stringify(results) : <svg width={800} height={800}></svg>}
               </form>
             </RB.Col>
             <RB.Col xs={4} md={2} />
