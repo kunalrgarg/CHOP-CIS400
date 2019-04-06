@@ -18,6 +18,8 @@ class Author:
                 publication = publications[pmid]
                 for uid in publication.author_ids:
                     collabs.add(uid)
+        if self.id in collabs:
+            collabs.remove(self.id)
         return collabs
     
     def to_dict(self):
@@ -127,7 +129,7 @@ def get_publication_records():
     # { publciation id : Mesh }
     mesh_data = {}
     # Desc, Num, PMID, Primary_MeSH
-    with open('server/record_results/medical_record.csv') as mesh_csv:
+    with open('/mnt/c/Users/garre/OneDrive/Documents/GitHub/CHOP-CIS400/server/record_results/medical_record.csv') as mesh_csv:
         csv_reader = csv.reader(mesh_csv, delimiter=',')
         for row in csv_reader:
             mesh = Mesh()
@@ -137,7 +139,7 @@ def get_publication_records():
             mesh_data[row[2]] = mesh
 
     publications = {}
-    with open('server/record_results/paper_record.csv') as pub_csv:
+    with open('/mnt/c/Users/garre/OneDrive/Documents/GitHub/CHOP-CIS400/server/record_results/paper_record.csv') as pub_csv:
         csv_reader = csv.reader(pub_csv, delimiter=',')
         for row in csv_reader:
             publication = get_publication(row)
@@ -164,7 +166,7 @@ def get_author(entry):
 # returns all Authors from the author_record.csv
 def get_author_records():
     authors = {}
-    with open('server/record_results/author_record.csv') as author_csv:
+    with open('/mnt/c/Users/garre/OneDrive/Documents/GitHub/CHOP-CIS400/server/record_results/author_record.csv') as author_csv:
         csv_reader = csv.reader(author_csv, delimiter=',')
         for row in csv_reader:
             author = get_author(row)
@@ -229,7 +231,7 @@ def get_publication_similarity(row):
 
 
 def get_similarities_records():
-    with open('server/record_results/similarities/document_similarities.csv') as similarities_csv:
+    with open('/mnt/c/Users/garre/OneDrive/Documents/GitHub/CHOP-CIS400/server/record_results/similarities/document_similarities.csv') as similarities_csv:
         csv_reader = csv.reader(similarities_csv, delimiter=',')
         similarities = {}
         for row in csv_reader:
