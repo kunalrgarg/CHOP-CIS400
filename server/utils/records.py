@@ -269,16 +269,28 @@ def get_publication_similarity(row):
 
 
 def get_similarities_records():
-    with open('server/record_results/similarities/document_similarities.csv') as similarities_csv:
+    abstract_similarities = {}
+    with open('server/record_results/similarities/document_abstract_similarities.csv') as similarities_csv:
         csv_reader = csv.reader(similarities_csv, delimiter=',')
-        similarities = {}
         for row in csv_reader:
             try:
                 sims = []
                 for entry in row[1].split(';'):
                     sims.append((entry.split(',')[0], entry.split(',')[1]))
-                similarities[row[0]] = sims
+                abstract_similarities[row[0]] = sims
             except:
                 continue
-                # power through!
-    return similarities
+
+    subject_similarities = {}
+    with open('server/record_results/similarities/document_abstract_similarities.csv') as similarities_csv:
+        csv_reader = csv.reader(similarities_csv, delimiter=',')
+        for row in csv_reader:
+            try:
+                sims = []
+                for entry in row[1].split(';'):
+                    sims.append((entry.split(',')[0], entry.split(',')[1]))
+                subject_similarities[row[0]] = sims
+            except:
+                continue
+
+    return abstract_similarities, subject_similarities

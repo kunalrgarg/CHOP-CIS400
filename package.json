@@ -25,6 +25,7 @@
   "dependencies": {
     "babel-polyfill": "^6.26.0",
     "connected-react-router": "^4.2.3",
+    "d3": "^5.9.2",
     "history": "^4.7.2",
     "isomorphic-fetch": "^2.2.1",
     "lodash": "^4.17.4",
@@ -38,8 +39,7 @@
     "redux-form": "^7.0.4",
     "redux-freeze": "^0.1.5",
     "redux-logger": "^3.0.6",
-    "redux-thunk": "^2.2.0",
-    "d3": "^5.9.2"
+    "redux-thunk": "^2.2.0"
   },
   "devDependencies": {
     "babel-core": "^6.17.0",

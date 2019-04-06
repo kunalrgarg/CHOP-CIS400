@@ -130,25 +130,26 @@ def convert_mesh_description(mesh_records, mesh_terms):
     return matching_terms, matching_numbers
 
 
-def get_mesh_from_text(mesh_records, title, abstract):
-    terms = set()
-    text = title if title is not None else ''
-    text += abstract if abstract is not None else ''
+def get_mesh_from_text(mesh_records, abstract):
+    if abstract is None or abstract == '':
+        return []
 
-    text = text.translate(str.maketrans('', '', string.punctuation))
+    terms = set()
+    text = abstract.translate(str.maketrans('', '', string.punctuation))
     tokens = [w.lower() for w in word_tokenize(text)]
     if '' in tokens:
         token.remove('')
     for i in range(len(tokens)):
         try:
+            numbers = mesh_records.get_numbers('{0} {1} {2}'.format(tokens[i], tokens[i+1], tokens[i+2]))
+            if numbers != []:
+                terms.add(mesh_records.get_term(numbers[0]))
             numbers = mesh_records.get_numbers('{0} {1}'.format(tokens[i], tokens[i+1]))
             if numbers != []:
                 terms.add(mesh_records.get_term(numbers[0]))
-                continue
             numbers = mesh_records.get_numbers(tokens[i])
             if numbers != []:
                 terms.add(mesh_records.get_term(numbers[0]))
-                continue
         except IndexError:
             numbers = mesh_records.get_numbers(tokens[i])
             if numbers != []:
@@ -285,7 +286,7 @@ def main():
                 mesh_terms, mesh_numbers = convert_mesh_description(mesh_records, all_terms)
 
                 all_terms.extend(mesh_terms)
-                all_terms.extend(get_mesh_from_text(mesh_records, title, abstract))
+                all_terms.extend(get_mesh_from_text(mesh_records, abstract))
 
                 all_terms = set(all_terms) # remove duplicates
                 mesh_terms = ';'.join(mesh_terms)
@@ -367,71 +368,164 @@ def main():
         publications = pd.read_csv(Path(data_path, 'paper_record.csv'))
         publications.head()
 
-        # preprocessing: remove stop words, set to lower case, lemmatize
-        subject_lists = []
-        stop_words = set(stopwords.words('english'))
-        stop_words.add('')
-        lemmatizer = WordNetLemmatizer()
-        for subject in publications.subject_list:
-            text_tmp = str(subject).replace(';', ' ').translate(str.maketrans('', '', string.punctuation))
-            tokens = [w.lower() for w in word_tokenize(text_tmp)]
-            doc = [lemmatizer.lemmatize(i) for i in tokens if not i in stop_words]
-            subject_lists.append(doc)
-
-
-        gen_docs = []
-        stop_words = set(stopwords.words('english'))
-        stop_words.union(['abstract', 'aim', 'aims', 'background', 'context', 'hypothesis', 'introduction', 'importance', 
-                          'method', 'methods', 'motivation', 'motivations', 'objective', 'objectives', 'study', 'purpose', 'review'])
         # create a dict of enntry to pmid
         pmids = {}
         for idx, pmid in enumerate(publications.PMID):
             pmids[idx] = pmid
 
+        # preprocessing: remove stop words, set to lower case, lemmatize
+        subject_lists = []
+        subject_lists_pmids = []
+
+        stop_words = set(stopwords.words('english'))
+        stop_words.add('')
+        stop_words.add('nan')
+        lemmatizer = WordNetLemmatizer()
+        print('getting subjects')
+        for idx, subject in enumerate(publications.subject_list):
+            # we don't want to include publications with no subject info in our analysis
+            if subject is None or str(subject) == '':
+                continue
+            text_tmp = str(subject).replace(';', ' ').translate(str.maketrans('', '', string.punctuation))
+            tokens = [w.lower() for w in word_tokenize(text_tmp)]
+            words = [w for w in tokens if not w in stop_words]
+            if len(words) == 0:
+                continue
+            subject_lists_pmids.append(pmids[idx])
+            subject_lists.append(words)
+
+
+        abstract_list = []
+        abstract_list_pmids = []
+        stop_words = set(stopwords.words('english'))
+        stop_words = stop_words.union(['abstract', 'aim', 'aims', 'background', 'context', 'hypothesis', 
+                                       'introduction', 'importance', 'method', 'methods', 'motivation', 'motivations', 
+                                       'objective', 'objectives', 'study', 'problem', 'purpose', 'results', 'review', 'nan'])
+        for idx, abstract in enumerate(publications.Abstract):
+            tokens = [w.lower() for w in word_tokenize(str(abstract))]
+            table = str.maketrans('', '', string.punctuation)
+            stripped = [w.translate(table) for w in tokens]
+            words = [word for word in stripped if word.isalpha()]
+            words = [w for w in words if not w in stop_words]
+            # some 'abstracts' are not actually abstracts
+            if len(tokens) < 20:
+                continue
+            doc = []
+            # remove numbers from abstracts
+            for w in words:
+                try:
+                    int(w)
+                except:
+                    doc.append(lemmatizer.lemmatize(w))
+            if len(doc) > 0:
+                abstract_list_pmids.append(pmids[idx])
+                abstract_list.append(doc)
+
         # create a dictionary to match tokens to integers
-        dictionary = gensim.corpora.Dictionary(subject_lists)
-        print(dictionary[5])
-        print("Number of words in dictionary:",len(dictionary))
+        subject_dictionary = gensim.corpora.Dictionary(subject_lists)
+        abstract_dictionary = gensim.corpora.Dictionary(abstract_list)
 
         # lists the number of times each word occurs in the document
         # list of tuples
             # first = index of the word
             # second = number of time that appears in that document
-        corpus = [dictionary.doc2bow(subject_list) for subject_list in subject_lists]
+        subject_corpus = [subject_dictionary.doc2bow(subject_list) for subject_list in subject_lists]
+        abstract_corpus = [abstract_dictionary.doc2bow(abstract) for abstract in abstract_list]
 
-        tf_idf = gensim.models.TfidfModel(corpus)
+        subject_tf_idf = gensim.models.TfidfModel(subject_corpus)
+        abstract_tf_idf = gensim.models.TfidfModel(abstract_corpus)
 
-        index = gensim.similarities.Similarity(str(similarities_path),
-                                            tf_idf[corpus], 
-                                            num_features=len(dictionary)) 
-        query = next(iter(corpus))
-        result = index[query]  # search similar to `query` in index
+        subject_index = gensim.similarities.Similarity(str(similarities_path),
+                                            subject_tf_idf[subject_corpus], 
+                                            num_features=len(subject_dictionary))
 
         # yield similarities of the indexed documents
-        similarities_df = pd.DataFrame()
+        subject_similarities_df = pd.DataFrame()
 
-        # with Path(similarities_path, 'document_similarities.csv').open(mode='w+') as out_file:
-        #     writer = csv.writer(out_file, delimiter=',')
-        for doc_sim_ix, doc_sim in enumerate(index):
-                pmid = pmids[doc_sim_ix]
+        for doc_sim_ix, doc_sim in enumerate(subject_index):
+            pmid = subject_lists_pmids[doc_sim_ix]
 
-                sorted_sim = sorted(list(enumerate(doc_sim)), key=lambda x:x[1], reverse=True)
+            sorted_sim = sorted(list(enumerate(doc_sim)), key=lambda x:x[1], reverse=True)
 
-                sims_with_pmids = []
-                for idx, sim in sorted_sim[:100]:
-                    sim_pmid = pmids[idx]
-                    sims_with_pmids.append('{0},{1}'.format(sim_pmid, sim))
+            sims_with_pmids = []
+            for idx, sim in sorted_sim[:100]:
+                sim_pmid = subject_lists_pmids[idx]
+                sims_with_pmids.append('{0},{1}'.format(sim_pmid, sim))
 
-                sims_with_pmids = ";".join(sims_with_pmids)
-                data = [pmid]
-                data.append(sims_with_pmids)
+            sims_with_pmids = ";".join(sims_with_pmids)
+            data = [pmid]
+            data.append(sims_with_pmids)
 
-                row = pd.DataFrame([data])
-                similarities_df = similarities_df.append(row, ignore_index=True)
+            row = pd.DataFrame([data])
+            subject_similarities_df = subject_similarities_df.append(row, ignore_index=True)
 
-        similarities_df.to_csv(Path(similarities_path, 'document_similarities.csv'),index=False)
+        subject_similarities_df.to_csv(Path(similarities_path, 'document_subject_similarities.csv'),index=False)
+
+
+        abstract_index = gensim.similarities.Similarity(str(similarities_path),
+                                        abstract_tf_idf[abstract_corpus],
+                                        num_features=len(abstract_dictionary))
+        abstract_similarities_df = pd.DataFrame()
+
+        for doc_sim_ix, doc_sim in enumerate(abstract_index):
+            pmid = abstract_list_pmids[doc_sim_ix]
+
+            sorted_sim = sorted(list(enumerate(doc_sim)), key=lambda x:x[1], reverse=True)
+
+            sims_with_pmids = []
+            for idx, sim in sorted_sim[:100]:
+                sim_pmid = abstract_list_pmids[idx]
+                sims_with_pmids.append('{0},{1}'.format(sim_pmid, sim))
+
+            sims_with_pmids = ";".join(sims_with_pmids)
+            data = [pmid]
+            data.append(sims_with_pmids)
+
+            row = pd.DataFrame([data])
+            abstract_similarities_df = abstract_similarities_df.append(row, ignore_index=True)
+
+        abstract_similarities_df.to_csv(Path(similarities_path, 'document_abstract_similarities.csv'),index=False)
 
     logging.getLogger('line.regular.time.line').info('SCOSY finished running successfully.')
+
+
+    # measure the similarities between the two similarity measurements
+    abstract_similarities = {}
+    with open('record_results/similarities/document_abstract_similarities.csv') as similarities_csv:
+        csv_reader = csv.reader(similarities_csv, delimiter=',')
+        for row in csv_reader:
+            try:
+                sims = {}
+                for entry in row[1].split(';'):
+                    sims[entry.split(',')[0]] = entry.split(',')[1]
+                abstract_similarities[row[0]] = sims
+            except Exception as ex:
+                print('abstract sims: {0}'.format(ex))
+                continue
+    subject_similarities = {}
+    with open('record_results/similarities/document_subject_similarities.csv') as similarities_csv:
+        csv_reader = csv.reader(similarities_csv, delimiter=',')
+        for row in csv_reader:
+            try:
+                sims = {}
+                for entry in row[1].split(';'):
+                    sims[entry.split(',')[0]] = entry.split(',')[1]
+                subject_similarities[row[0]] = sims
+            except Exception as ex:
+                print('subject sims: {0}'.format(ex))
+                continue
+
+    overlap = 0
+    total = 0
+    for pmid, subject_sims in subject_similarities.items():
+        if pmid in abstract_similarities:
+            abstract_sims = abstract_similarities[pmid]
+            total += 1
+            for key in list(subject_sims.keys())[1:11]:
+                if key in list(abstract_sims.keys())[1:11]:
+                    overlap += 1
+                    break
+        print('{0}/{1} = {2}'.format(overlap, total, overlap/total))
 
 
 if __name__ == '__main__':

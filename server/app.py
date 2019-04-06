@@ -189,7 +189,10 @@ def get_recommendations(author_uid):
     authors = records.get_author_records()
     if author_uid in authors:
         author = authors[author_uid]
-        collaborators = recommendation.recommend_collaborators(author, records.get_author_records(), records.get_publication_records())
+        author_records = records.get_author_records()
+        publication_records = records.get_publication_records()
+        abstract_similarities, subject_similarities = records.get_similarities_records()
+        collaborators = recommendation.recommend_collaborators(author, author_records, publication_records, abstract_similarities, subject_similarities)
         return jsonify({'collaborators': collaborators})
     else:
         return jsonify({'collaborators': []})
