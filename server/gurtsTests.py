@@ -117,7 +117,7 @@ class TestStringMethods(unittest.TestCase):
         modifiedAuthors = copy.deepcopy(authors)
         modifiedPubs = copy.deepcopy(publications)
         modifiedPmids = copy.deepcopy(author.pmids)
-        
+
         for collab in possibleCollabs:
             print("testing a collab")
             for pmid in modifiedPmids:
@@ -132,6 +132,74 @@ class TestStringMethods(unittest.TestCase):
 
             totalTests += 1
             recs = recommendation.recommend_collaborators(modifiedAuthor, modifiedAuthors, modifiedPubs)
+            for rec in recs:
+                if rec["author"]['id'] == authors[collab].id:
+                    print("pass")
+                    break
+            else:
+                print("fail")
+            #recs.sort(key= lambda x: x["weight"])
+            modifiedAuthor = copy.deepcopy(author)
+            modifiedAuthors = copy.deepcopy(authors)
+            modifiedPubs = copy.deepcopy(publications)
+            modifiedPmids = copy.deepcopy(author.pmids)
+
+                
+
+        print("total tests")
+        print(totalTests)
+        print("skippedTests")
+        print(skippedTests)
+        #print("onePublish percent")
+        #print(percentOfOnePub())
+        #for publication in publications:
+        #    if someAuthor.id in publication.author_ids or collab.id in publication.author_ids:
+        #        del someAuthor.pmids[someAuthor.pmids.find(publication.id)]
+        #        del collab.pmids[highestRecAuthor.pmids.find(publication.id)]
+        #        del publication
+
+    def test_delete_collab_authors(self):
+        
+        publications = records.get_publication_records()
+        
+        skippedTests = 0
+        totalTests = 0
+        authors = records.get_author_records()
+        testAuthor = None
+
+        for author in authors.values():
+            if len(author.pmids) >= 5:
+                testAuthor = author
+                break
+        else:
+            print('couldnt find a good author')
+            return
+
+        possibleCollabs = author.collaborators()
+        print("number of collabs")
+        print(len(possibleCollabs))
+        
+        if not possibleCollabs:
+            print("collab doesnt exist")
+        
+       
+        modifiedAuthors = copy.deepcopy(authors)
+        modifiedPubs = copy.deepcopy(publications)
+        modifiedPmids = copy.deepcopy(author.pmids)
+        
+        for collab in possibleCollabs:
+            print("testing a collab")
+            for pmid in modifiedPmids:
+                if authors[collab].id in modifiedPubs[pmid].author_ids:
+                    if len(authors[collab].pmids) > 1:  
+                        modifiedPubs[pmid].author_ids.remove(authors[collab].id)
+                        modifiedAuthors[collab].pmids.remove(pmid)
+                    else:
+                        skippedTests += 1
+                        totalTests += 1
+
+            totalTests += 1
+            recs = recommendation.recommend_collaborators(author, modifiedAuthors, modifiedPubs)
             for rec in recs:
                 if rec["author"]['id'] == authors[collab].id:
                     print("pass")
