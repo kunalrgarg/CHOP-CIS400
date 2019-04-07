@@ -76,15 +76,15 @@ class Index extends Component {
     const viewRecResults = recInProgress ? <h4>loading</h4> : (recResults ? 
      <div><h4>Recommendation Results (You Must Reload for Each New Author):</h4>
       <table><tbody><tr>
-          <td>Name</td>
-          <td>id</td>
-          <td>weight</td></tr>
+          <td width="40%">Name</td>
+          <td width="20%">id</td>
+          <td width="40%">weight</td></tr>
           {recResults['collaborators'].map((item, key) => {
             return (
               <tr key = {key}>
-              <td>{item['author'].name}</td>
-              <td>{item['author'].id}</td>
-              <td>{item.weight}</td>
+              <td width="40%">{item['author'].name}</td>
+              <td width="20%">{item['author'].id}</td>
+              <td width="40%">{item.weight}</td>
             </tr>)})}
         </tbody>
       </table></div> : <h4>Get Started By Hitting "Find Recs!"</h4>)
@@ -92,17 +92,17 @@ class Index extends Component {
     const searchResultComponent = (results ?  
       <div><h4>Results:</h4>
       <table><tbody><tr>
-          <td>Name</td>
-          <td>ID</td>
-          <td>Roles</td>
-          <td>More Info</td></tr>
+          <td width="35%">Name</td>
+          <td width="10%">ID</td>
+          <td width="35%">Roles</td>
+          <td width="20%">More Info</td></tr>
           {results['authors'].map((item, key) => {
             return (
               <tr key = {key}>
-              <td>{item.name}</td>
-              <td>{item.id}</td>
-              <td>{item.roles}</td>
-              <td><RB.Button onClick={e => this.clickHandler(e, key)}>View Recs</RB.Button></td>
+              <td width="35%">{item.name}</td>
+              <td width="10%">{item.id}</td>
+              <td width="35%">{item.roles}</td>
+              <td width="20%"><RB.Button onClick={e => this.clickHandler(e, key)}>View Recs</RB.Button></td>
               <Modal id={key} show={this.state.activeModal === key} onHide={this.hideModal}>
                 <Modal.Header closeButton><Modal.Title>Recommendations for {item.name}</Modal.Title>
                 </Modal.Header>
@@ -119,7 +119,7 @@ class Index extends Component {
             <RB.Col xs={4} md={2} />
             <RB.Col xs={12} md={8}>
               <RB.PageHeader>
-                SCOSY - Top Secret Medical Project
+                MACRE: Medical and Academic Collaboration Recommendation Engine
                 <br />
                 <small>
                   by Santiago Buenahora, Garrett Darley, Kunal Garg, Nick Keenan
