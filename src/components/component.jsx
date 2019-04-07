@@ -3,8 +3,6 @@ import * as RB from 'react-bootstrap';
 import ZoomableBurst from './zoomableBurst';
 import { Modal } from 'react-bootstrap';
 
-
-
 class Index extends Component {
   constructor(props, context) {
     super(props, context);
@@ -15,8 +13,6 @@ class Index extends Component {
     this.state = {
       activeModal: null,
     };
-
-
   }
 
   clickHandler(e, index) {
@@ -24,11 +20,21 @@ class Index extends Component {
   }
 
   hideModal() {
-      this.setState({ activeModal: null })
+      this.setState({ activeModal: null})
   }
 
   render() {
-    const { updateSearchTerm, updateSearchType, requestSearch, searchTerm, searchType, results } = this.props;
+    const { 
+      updateSearchTerm, 
+      updateSearchType, 
+      requestSearch, 
+      searchTerm, 
+      searchType, 
+      results, 
+      requestRecs, 
+      recResults, 
+      recInProgress, 
+      inProgress } = this.props;
 
     const BUTTONS = ['Default']; // can add more buttons of various style
 
@@ -67,47 +73,44 @@ class Index extends Component {
       </RB.ButtonToolbar>
     );
 
-    const searchResultComponent = (results ?  
-      <div>
-      <h4>
-        Results:
-      </h4>
-      <table>
-        <tbody>
-        <tr>
+    const viewRecResults = recInProgress ? <h4>loading</h4> : (recResults ? 
+     <div><h4>Recommendation Results (You Must Reload for Each New Author):</h4>
+      <table><tbody><tr>
           <td>Name</td>
           <td>id</td>
-          <td>roles</td>
-        </tr>
+          <td>weight</td></tr>
+          {recResults['collaborators'].map((item, key) => {
+            return (
+              <tr key = {key}>
+              <td>{item['author'].name}</td>
+              <td>{item['author'].id}</td>
+              <td>{item.weight}</td>
+            </tr>)})}
+        </tbody>
+      </table></div> : <h4>Get Started By Hitting "Find Recs!"</h4>)
+
+    const searchResultComponent = (results ?  
+      <div><h4>Results:</h4>
+      <table><tbody><tr>
+          <td>Name</td>
+          <td>ID</td>
+          <td>Roles</td>
+          <td>More Info</td></tr>
           {results['authors'].map((item, key) => {
             return (
               <tr key = {key}>
               <td>{item.name}</td>
               <td>{item.id}</td>
               <td>{item.roles}</td>
-              <td><RB.Button onClick={e => this.clickHandler(e, key)}>
-                  View Recs
-                </RB.Button></td>
+              <td><RB.Button onClick={e => this.clickHandler(e, key)}>View Recs</RB.Button></td>
               <Modal id={key} show={this.state.activeModal === key} onHide={this.hideModal}>
-                <Modal.Header closeButton>
-                  <Modal.Title>Recommendations for {item.name}</Modal.Title>
+                <Modal.Header closeButton><Modal.Title>Recommendations for {item.name}</Modal.Title>
                 </Modal.Header>
-                <Modal.Body>{item.name}</Modal.Body>
-                <Modal.Footer>
-                  <RB.Button onClick={this.hideModal}>
-                    Close
-                  </RB.Button>
-                  <RB.Button  onClick={this.hideModal}>
-                    Save Changes
-                  </RB.Button>
+                <Modal.Body>{viewRecResults}</Modal.Body>
+                <Modal.Footer><RB.Button  onClick={() => requestRecs(item.id)}>Find Recs!</RB.Button>
                 </Modal.Footer>
               </Modal>
-            </tr>
-            )
-          })}
-        </tbody>
-      </table></div> : <h1>no results</h1>);
-
+            </tr>)})}</tbody></table></div> : <h1>no results</h1>);
 
     return (
       <div>
@@ -144,7 +147,7 @@ class Index extends Component {
                   <RB.Grid>
                   </RB.Grid>
                 </RB.FormGroup>
-                <RB.Button onClick={() => requestSearch(searchTerm, searchType)}>Submit</RB.Button>
+                <RB.Button onClick={() => requestSearch(searchTerm, searchType)}>{inProgress ? "Loading" : "Submit"}</RB.Button>
                 <hr/>
                 {results ? searchResultComponent : <svg width={800} height={800}></svg>}  
               </form>

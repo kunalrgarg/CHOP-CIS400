@@ -23,6 +23,20 @@ export const requestSearchSuccess = (results) => ({
   type: 'REQUEST_SEARCH_SUCCESS', results
 });
 
+export const requestRecSent = () => ({
+  type: 'REQUEST_REC_SENT'
+});
+
+export const requestRecFailed = (error) => ({
+  type: 'REQUEST_REC_FAILED', error
+});
+
+export const requestRecSuccess = (recResults) => ({
+  type: 'REQUEST_REC_SUCCESS', recResults
+});
+
+
+
 export function requestSearch(searchTerm, searchType) {
   return function(dispatch) {
     dispatch(requestSearchSent());
@@ -36,6 +50,25 @@ export function requestSearch(searchTerm, searchType) {
         if (status >= 400) dispatch(requestSearchFailed());
         else dispatch(requestSearchSuccess(json))
       }, err => { dispatch(requestSearchFailed(err))  })
+  }
+}
+
+export function requestRecs(author) {
+  // need to fix dispatches for Recs
+  return function(dispatch) {
+    dispatch(requestRecSent());
+    return fetch(`${config.endpoint}recommendations/${author}`)
+      .then(response => response.json()
+        .then(json => ({
+          status: response.status,
+          json
+        })))
+      .then(({ status, json }) => {
+        if (status >= 400) dispatch(requestRecFailed());
+        else dispatch(requestRecSuccess(json))
+      }, err => { 
+        dispatch(requestRecFailed(err))  
+      })
   }
 }
 
