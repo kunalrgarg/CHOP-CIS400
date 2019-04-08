@@ -24,19 +24,19 @@ def recommend_collaborators(author, author_records, publication_records, abstrac
                             collab_weight = 0.3333, abstract_weight = 0.3333, subject_weight = 0.3333):
     # recommendation weight based off of past collaboration network
     authors = author_records
-    existing_collaborators = author.collaborators()
+    existing_collaborators = author.collaborators(publication_records)
     recommendations = {}
 
-    collaborators = records.collaborators([authors[uid] for uid in existing_collaborators])
-    for weight in [1.0, 0.5]:
+    collaborators = records.collaborators([authors[uid] for uid in existing_collaborators], publication_records)
+    for weight in [collab_weight, 0.5*collab_weight]:
         new_collaborators = set()
         for uid in collaborators:
             if uid not in recommendations and uid not in existing_collaborators:
                 collaborator = authors[uid]
                 recommendations[uid] = Collaborator(collaborator)
-                recommendations[uid].collab_weight = weight * collab_weight
+                recommendations[uid].collab_weight = weight
                 new_collaborators.add(collaborator)
-        collaborators = records.collaborators(new_collaborators)
+        collaborators = records.collaborators(new_collaborators, publication_records)
 
     # recommendation weight based off of abstract similarity
     publications = publication_records
@@ -53,7 +53,7 @@ def recommend_collaborators(author, author_records, publication_records, abstrac
                             recommendations[uid] = Collaborator(authors[uid])
                             recommendations[uid].abstract_weight = float(sim) * abstract_weight
                         else:
-                            recommendations[uid].abstract_weight = max(float(sim), recommendations[uid].abstract_weight)
+                            recommendations[uid].abstract_weight = max(float(sim) * abstract_weight, recommendations[uid].abstract_weight)
         if auth_pmid in subject_similarities:
             similarities = subject_similarities[auth_pmid]
             for pmid, sim in similarities[1:11]:
@@ -64,11 +64,9 @@ def recommend_collaborators(author, author_records, publication_records, abstrac
                             continue
                         if uid not in recommendations:
                             recommendations[uid] = Collaborator(authors[uid])
-                            recommendations[uid].abstract_weight = float(sim) * abstract_weight
+                            recommendations[uid].subject_weight = float(sim) * subject_weight
                         else:
-                            recommendations[uid].abstract_weight = max(float(sim), recommendations[uid].abstract_weight)
+                            recommendations[uid].subject_weight = max(float(sim) * subject_weight, recommendations[uid].subject_weight)
 
     recommended_collaborators = [collab.to_dict() for collab in recommendations.values()]
-    return sorted(recommended_collaborators, key=lambda x: x['weight'], reverse=True)[:20]
-
-
+    return sorted(recommended_collaborators, key=lambda x: x['weight'], reverse=True)[:25]

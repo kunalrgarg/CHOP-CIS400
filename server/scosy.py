@@ -423,7 +423,9 @@ def main():
 
         # create a dictionary to match tokens to integers
         subject_dictionary = gensim.corpora.Dictionary(subject_lists)
+        subject_dictionary.filter_extremes(no_above=0.85)
         abstract_dictionary = gensim.corpora.Dictionary(abstract_list)
+        abstract_dictionary.filter_extremes(no_above=0.5)
 
         # lists the number of times each word occurs in the document
         # list of tuples
