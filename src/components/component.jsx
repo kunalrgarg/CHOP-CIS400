@@ -111,7 +111,9 @@ class Index extends Component {
     const clickHandler = this.clickHandler;
 
     const searchResultComponent = (results ?
-      <div>
+      <RB.Tabs defaultActiveKey="authors" id="uncontrolled-tab-example">
+  <RB.Tab eventKey="authors" title="Authors">
+    <div>
         <RB.Col xs={1} md={1} />
         <RB.Col xs={15} md={15}>
           <RB.Table striped bordered hover>
@@ -137,7 +139,37 @@ class Index extends Component {
                   </tr>)})}</tbody></RB.Table>
         </RB.Col>
         <RB.Col xs={1} md={1} />
-      </div> : <h1>no results</h1>);
+      </div> 
+  </RB.Tab>
+  <RB.Tab eventKey="publications" title="Publications">
+  <div>
+        <RB.Col xs={1} md={1} />
+        <RB.Col xs={15} md={15}>
+          <RB.Table striped bordered hover>
+            <tbody>
+              <tr>
+                <td width="20%">Title</td>
+                <td width="10%">PMIDs</td>
+                <td width="30%">AuthorList</td>
+                <td width="30%">MeSH Terms</td>
+                <td width="10%">PubMed Link</td>
+              </tr>
+              {results['publications'].map((item, key) => {
+                return (
+                  <tr key = {key}>
+                    <td width="20%">{item.title}</td>
+                    <td width="10%">{item.id}</td>
+                    <td width="30%">{item.author_list}</td>
+                    <td width="30%">{item.mesh_terms}</td>
+                    <td width="10%"><a href={item.link}>{item.link}</a></td>
+                  </tr>)})}</tbody></RB.Table>
+        </RB.Col>
+        <RB.Col xs={1} md={1} />
+      </div> 
+  </RB.Tab>
+</RB.Tabs>
+        
+      : <h1>no results</h1>);
 
     return (
       <div>
