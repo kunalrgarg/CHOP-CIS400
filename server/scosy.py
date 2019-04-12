@@ -20,13 +20,16 @@ import string
 
 
 class Author:
-    def __init__(self, name, pmid, role, penn, chop, affiliations, uid):
+    def __init__(self, name, pmid, role, penn, chop, affiliations, uid, mesh_terms):
         self.name = name
         self.pmids = [pmid]
         self.roles = [role]
         self.penn = penn
         self.chop = chop
         self.uid = uid
+        self.mesh_terms = {}
+        for mesh in mesh_terms:
+            self.mesh_terms[mesh] = 1
         if affiliations is None:
             self.affiliations = []
         elif affiliations is list:
@@ -52,6 +55,11 @@ class Author:
         self.affiliations.extend(other.affiliations)
         self.penn = self.penn or other.penn
         self.chop = self.chop or other.chop
+        for mesh in other.mesh_terms:
+            try:
+                self.mesh_terms[mesh] += 1
+            except KeyError:
+                self.mesh_terms[mesh] = 1
 
 
 def assign_roles(author_list):
@@ -230,7 +238,7 @@ def main():
         # contains all the metadata elements on the author level: PubMed unique Identifier number(PMID), AuthorID (as a
         # (CA) Ordinary Author (OA) or Principal Author (PA) and the author's affiliation
         author_record_df = pd.DataFrame(columns=['PMID', 'Author', 'author_chop', 'author_penn', 'Role',
-                                                 'AffiliationInfo', 'UID'])
+                                                 'AffiliationInfo', 'UID', 'mesh_terms'])
         # contains all the metadata elements on the paper level: PubMed unique Identifier number(PMID), Title, Abstract,
         # Year, Month, AuthorList, SubjectList, date
         paper_record_df = pd.DataFrame(columns=['PMID', 'Title', 'Abstract', 'Year', 'Month', 'author_list',
@@ -301,7 +309,7 @@ def main():
                 for author_index, organizations in enumerate(zip(chop_organization, penn_organization)):
                     # check if the author belongs to either CHOP or PENN
                     if 1 in organizations:
-                        author = Author(authors[author_index], pmid, roles[author_index], organizations[1], organizations[0], affiliations[author_index], uid)
+                        author = Author(authors[author_index], pmid, roles[author_index], organizations[1], organizations[0], affiliations[author_index], uid, mesh_terms.split(';'))
                         exists = False
                         for a in author_list:
                             if a.equals(author):
@@ -337,10 +345,14 @@ def main():
 
         # authors to pd.dataFrame
         for author in author_list:
+            mesh = []
+            for term, count in author.mesh_terms.items():
+                mesh.append('{0}:{1}'.format(term, count))
+            mesh = ';'.join(mesh)
             row = pd.DataFrame([[author.pmids, author.name, author.chop, author.penn,
-                                author.roles, author.affiliations, author.uid]],
+                                author.roles, author.affiliations, author.uid, mesh]],
                             columns=['PMID', 'Author', 'author_chop', 'author_penn', 'Role',
-                                        'AffiliationInfo', 'UID'])
+                                        'AffiliationInfo', 'UID', 'mesh_terms'])
             author_record_df = author_record_df.append(row, ignore_index=True)
 
         pandas.io.formats.excel.header_style = None
@@ -423,7 +435,9 @@ def main():
 
         # create a dictionary to match tokens to integers
         subject_dictionary = gensim.corpora.Dictionary(subject_lists)
+        subject_dictionary.filter_extremes(no_above=0.85)
         abstract_dictionary = gensim.corpora.Dictionary(abstract_list)
+        abstract_dictionary.filter_extremes(no_above=0.5)
 
         # lists the number of times each word occurs in the document
         # list of tuples

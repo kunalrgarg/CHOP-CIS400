@@ -11,10 +11,12 @@ class Author:
         self.penn = False
         self.roles = []
         self.affiliations = []
+        self.mesh_terms = {}
 
-    def collaborators(self):
+    def collaborators(self, publications = None):
+        if publications is None:
+            publications = get_publication_records()
         collabs = set()
-        publications = get_publication_records()
         for pmid in self.pmids:
             if pmid in publications:
                 publication = publications[pmid]
@@ -31,12 +33,20 @@ class Author:
         d['roles'] = self.roles
         d['affiliations'] = self.affiliations
         d['id'] = self.id
+        mesh_terms = []
+        for mesh, count in self.mesh_terms.items():
+            if mesh == '':
+                continue
+            mesh_terms.append({'term': mesh, 'count': count})
+        mesh_terms = sorted(mesh_terms, key=lambda mesh: mesh['count'], reverse=True)
+        d['mesh_terms'] = mesh_terms
         return d
 
 
-def collaborators(author_list):
-    publications = get_publication_records()
-    collabs = set()
+def collaborators(author_list, publications = None):
+    if publications is None:
+        publications = get_publication_records()
+    collabs = set() 
     pmids = set()
     for author in author_list:
         pmids = pmids.union(author.pmids)
@@ -138,17 +148,17 @@ def get_publication(entry):
 
 
 # returns all the publications from paper_record.csv with their MeSH data
-def get_publication_records():
+def get_publication_records(filepath = 'server/record_results'):
     # { publciation id : Mesh }
     mesh_data = {}
     # PMID, [terms], [numbers]
-    with open('server/record_results/medical_record.csv') as mesh_csv:
+    with open('{0}/medical_record.csv'.format(filepath)) as mesh_csv:
         csv_reader = csv.reader(mesh_csv, delimiter=',')
         for row in csv_reader:
             mesh_data[row[0]] = row[2].split(';')
 
     publications = {}
-    with open('server/record_results/paper_record.csv') as pub_csv:
+    with open('{0}/paper_record.csv'.format(filepath)) as pub_csv:
         csv_reader = csv.reader(pub_csv, delimiter=',')
         for row in csv_reader:
             publication = get_publication(row)
@@ -171,13 +181,21 @@ def get_author(entry):
     author.roles = entry[4]
     author.affiliations = entry[5].split(';')
     author.id = entry[6]
+    mesh_terms = entry[7].split(';')
+    for mesh in mesh_terms:
+        try:
+            key = mesh.split(':')[0]
+            count = mesh.split(':')[1]
+            author.mesh_terms[key] = count
+        except:
+            continue
     return author
 
 
 # returns all Authors from the author_record.csv
-def get_author_records():
+def get_author_records(filepath = 'server/record_results'):
     authors = {}
-    with open('server/record_results/author_record.csv') as author_csv:
+    with open('{0}/author_record.csv'.format(filepath)) as author_csv:
         csv_reader = csv.reader(author_csv, delimiter=',')
         for row in csv_reader:
             author = get_author(row)
@@ -268,9 +286,9 @@ def get_publication_similarity(row):
         publication.similar_publications.append(d)
 
 
-def get_similarities_records():
+def get_similarities_records(filepath = 'server/record_results/similarities'):
     abstract_similarities = {}
-    with open('server/record_results/similarities/document_abstract_similarities.csv') as similarities_csv:
+    with open('{0}/document_abstract_similarities.csv'.format(filepath)) as similarities_csv:
         csv_reader = csv.reader(similarities_csv, delimiter=',')
         for row in csv_reader:
             try:
@@ -282,7 +300,7 @@ def get_similarities_records():
                 continue
 
     subject_similarities = {}
-    with open('server/record_results/similarities/document_abstract_similarities.csv') as similarities_csv:
+    with open('{0}/document_abstract_similarities.csv'.format(filepath)) as similarities_csv:
         csv_reader = csv.reader(similarities_csv, delimiter=',')
         for row in csv_reader:
             try:

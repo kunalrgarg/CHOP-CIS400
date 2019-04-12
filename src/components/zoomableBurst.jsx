@@ -38,7 +38,8 @@ class ZoomableBurst extends Component {
     const svg = d3.select('svg')
       .style('width', '100%')
       .style('height', 'auto')
-      .style('font', '10px sans-serif');
+      .style('font', '10px sans-serif')
+      .attr('align', 'center');
 
     const g = svg.append('g')
       .attr('transform', `translate(${width / 2},${width / 2})`);
