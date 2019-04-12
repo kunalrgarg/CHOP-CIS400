@@ -65,6 +65,8 @@ def search_by_author(name):
     publication_records = records.get_publication_records()
     publications = []
 
+    
+
     for uid, author in records.get_author_records().items():
         match = True
         # split name so that name order does not matter for search (last, first vs first last)
@@ -75,8 +77,13 @@ def search_by_author(name):
         if match:
             authors.append(author.to_dict())
             for pmid in author.pmids:
+                
                 if pmid in publication_records:
-                    publications.append(publication_records[pmid].to_dict())
+                    dictionary = publication_records[pmid].to_dict()
+                    dictionary['link'] = "https://www.ncbi.nlm.nih.gov/pubmed/" + pmid
+                    publications.append(dictionary)
+                    #publications.append(publication_records[pmid].to_dict())
+                    
 
     publications = sorted(publications, key=lambda publication: publication['date'], reverse=True)
     authors = sorted(authors, key=lambda author: author['name'])
@@ -94,14 +101,20 @@ def search_by_mesh(term):
     mesh_record = records.get_mesh_records()
     numbers = mesh_record.get_numbers(term)
 
+    
+
     if numbers == []:
         return jsonify([{'statistics': [], 'authors': [], 'publications': []}])
 
     publications = []
     for pmid, publication in records.get_publication_records().items():
+        
         for number in numbers:
             if number in publication.mesh_numbers:
-                publications.append(publication.to_dict())
+                dictionary = publication.to_dict()
+                dictionary['link'] = "https://www.ncbi.nlm.nih.gov/pubmed/" + pmid
+                publications.append(dictionary)
+                #publications.append(publication.to_dict())
                 break
     
     # get author data
@@ -119,15 +132,20 @@ def search_by_title(title):
 
     title = title.lower()
     publications = []
+    
     for pmid, publication in records.get_publication_records().items():
-            if title in publication.title.lower():
-                publications.append(publication.to_dict())
+        
+        if title in publication.title.lower():
+            dictionary = publication.to_dict()
+            dictionary['link'] = "https://www.ncbi.nlm.nih.gov/pubmed/" + pmid
+            publications.append(dictionary)
+            #publications.append(publication.to_dict())
 
     authors = get_author_data(publications)
     publications = sorted(publications, key=lambda publication: publication['date'], reverse=True)
     authors = sorted(authors, key=lambda author: author['name'])
     statisitcs = get_statistics(authors, publications)
-    result = { 'statistics': statisitcs, 'authors': authors, 'publications': publications }
+    result = { 'statistics': statisitcs, 'authors': authors, 'publications': publications  }
     return jsonify(result)
 
 
@@ -137,15 +155,20 @@ def search_by_keyword(keyword):
 
     keyword = keyword.lower()
     publications = []
+    
     for pmid, publication in records.get_publication_records().items():
+        
         if keyword in publication.title or keyword in publication.subject_list or keyword in publication.abstract:
-            publications.append(publication.to_dict())
+            dictionary = publication.to_dict()
+            dictionary['link'] = "https://www.ncbi.nlm.nih.gov/pubmed/" + pmid
+            publications.append(dictionary)
+            #publications.append(publication.to_dict())
 
     authors = get_author_data(publications)
     publications = sorted(publications, key=lambda publication: publication['date'], reverse=True)
     authors = sorted(authors, key=lambda author: author['name'])
     statisitcs = get_statistics(authors, publications)
-    result = { 'statistics': statisitcs, 'authors': authors, 'publications': publications }
+    result = { 'statistics': statisitcs, 'authors': authors, 'publications': publications   }
     return jsonify(result)
 
 
@@ -154,14 +177,16 @@ def search_by_pmid(pmid):
     '''Returns the publication (if found) and its authors'''
 
     publications = records.get_publication_records()
+    
     if pmid in publications:
+        
         publication = publications[pmid].to_dict() 
         authors = get_author_data([publication])
         authors = sorted(authors, key=lambda author: author['name'])
         statisitcs = get_statistics(authors, [publication])
-        result = { 'statistics': statisitcs, 'authors': authors, 'publications': [publication] }
+        result = { 'statistics': statisitcs, 'authors': authors, 'publications': [publication]  }
         return jsonify(result)
-    return jsonify({'statistics': [], 'authors': [], 'publications': []})
+    return jsonify({'statistics': [], 'authors': [], 'publications': [] })
 
 ##
 # API Routes
