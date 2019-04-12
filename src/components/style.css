@@ -1,0 +1,29 @@
+
+.badge-success {
+    background-color: mediumseagreen;
+}
+
+.badge-secondary {
+    background-color: cornflowerblue;
+}
+
+.badge-primary {
+    background-color: palevioletred;
+}
+
+.badge-pill {
+    margin-right: 5px;
+}
+
+.move-right {
+    margin-left: 14px;
+}
+
+.modal-ku {
+    width: 750px;
+    margin: auto;
+}
+
+/*.progress-bar {*/
+    /*width: 60%;*/
+/*}*/

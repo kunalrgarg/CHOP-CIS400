@@ -2,6 +2,7 @@ import React, { Component } from 'react';
 import * as RB from 'react-bootstrap';
 import ZoomableBurst from './zoomableBurst';
 import { Modal } from 'react-bootstrap';
+import './style.css';
 
 class Index extends Component {
   constructor(props, context) {
@@ -41,6 +42,9 @@ class Index extends Component {
     function onSelectAlert(value) {
       updateSearchType(value);
     }
+    if (results) {
+      console.log(results);
+    }
 
     function renderDropdownButton(title, i) {
       return (
@@ -74,20 +78,22 @@ class Index extends Component {
     );
 
     const viewRecResults = recInProgress ? <h4>loading</h4> : (recResults ?
-     <div><h4>Recommendation Results (You Must Reload for Each New Author):</h4>
-      <table><tbody><tr>
-          <td width="40%">Name</td>
-          <td width="20%">id</td>
-          <td width="40%">weight</td></tr>
+     <div>
+      <RB.Table bordered hover><tbody><tr>
+          <td width="25%">Name</td>
+          <td width="75%">Weight</td></tr>
           {recResults['collaborators'].map((item, key) => {
             return (
               <tr key = {key}>
-              <td width="40%">{item['author'].name}</td>
-              <td width="20%">{item['author'].id}</td>
-              <td width="40%">{item.weight}</td>
+              <td width="25%">{item['author'].name}</td>
+              <td width="75%">
+                <RB.ProgressBar min={0} max={100} now={Math.ceil(item.weight * 100)}
+                                label={'' + Math.ceil(item.weight * 100) + '%'}>
+                </RB.ProgressBar>
+              </td>
             </tr>)})}
         </tbody>
-      </table></div> : <h4>Get Started By Hitting "Find Recs!"</h4>)
+      </RB.Table></div> : <h4></h4>)
 
     function getRoleBadges(roles) {
       roles = roles.replace('[', '').replace(']', '').split(', ')
@@ -102,33 +108,35 @@ class Index extends Component {
       >{t}</RB.Badge>)
     }
 
+    const clickHandler = this.clickHandler;
+
     const searchResultComponent = (results ?
       <div>
-        <RB.Col xs={2} md={2} />
-        <RB.Col xs={14} md={14}>
+        <RB.Col xs={1} md={1} />
+        <RB.Col xs={15} md={15}>
           <RB.Table striped bordered hover>
             <tbody>
               <tr>
-                <td width="35%">Name</td>
-                <td width="35%">Roles</td>
-                <td width="20%">More Info</td>
+                <td width="17%">Name</td>
+                <td width="36%">Roles</td>
+                <td width="47%">More Info</td>
               </tr>
               {results['authors'].map((item, key) => {
                 return (
                   <tr key = {key}>
-                    <td width="35%">{item.name}</td>
-                    <td width="35%">{getRoleBadges(item.roles)}</td>
-                    <td width="20%"><RB.Button onClick={e => this.clickHandler(e, key)}>View Recs</RB.Button></td>
-                    <Modal id={key} show={this.state.activeModal === key} onHide={this.hideModal}>
+                    <td width="17%">{item.name}</td>
+                    <td width="36%">{getRoleBadges(item.roles)}</td>
+                    <td width="47%"><RB.Button onClick={function (e) {clickHandler(e, key); requestRecs(item.id)}}>View Recs</RB.Button></td>
+                    <Modal id={key} show={this.state.activeModal === key} onHide={this.hideModal} bsSize="large">
                       <Modal.Header closeButton><Modal.Title>Recommendations for {item.name}</Modal.Title>
                       </Modal.Header>
                       <Modal.Body>{viewRecResults}</Modal.Body>
-                      <Modal.Footer><RB.Button  onClick={() => requestRecs(item.id)}>Find Recs!</RB.Button>
+                      <Modal.Footer>
                       </Modal.Footer>
                     </Modal>
                   </tr>)})}</tbody></RB.Table>
         </RB.Col>
-        <RB.Col xs={2} md={2} />
+        <RB.Col xs={1} md={1} />
       </div> : <h1>no results</h1>);
 
     return (
@@ -148,7 +156,7 @@ class Index extends Component {
                 <RB.FormGroup controlId='search'>
                   <RB.Grid>
                     <RB.Row className ="show-grid">
-                      <RB.ControlLabel>Please enter a search term</RB.ControlLabel>
+                      <RB.ControlLabel><h4 className="move-right">Please enter a search term</h4></RB.ControlLabel>
                     </RB.Row>
                     <RB.Row className ="show-grid">
                       <RB.Col xs={12} md={6}>
@@ -162,11 +170,9 @@ class Index extends Component {
                       </RB.Col>
                     </RB.Row>
                   </RB.Grid>
-                  <RB.HelpBlock>This search term will be used for finding researcher data</RB.HelpBlock>
-                  <RB.Grid>
-                  </RB.Grid>
+                  <RB.HelpBlock className="move-right">This search term will be used for finding researcher data</RB.HelpBlock>
                 </RB.FormGroup>
-                <RB.Button onClick={() => requestSearch(searchTerm, searchType)}>{inProgress ? "Loading" : "Submit"}</RB.Button>
+                <RB.Button className="move-right" onClick={() => requestSearch(searchTerm, searchType)}>{inProgress ? "Loading" : "Search"}</RB.Button>
                 <hr/>
               </form>
             </RB.Col>
