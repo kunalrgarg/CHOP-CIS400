@@ -11,6 +11,7 @@ class Author:
         self.penn = False
         self.roles = []
         self.affiliations = []
+        self.mesh_terms = {}
 
     def collaborators(self, publications = None):
         if publications is None:
@@ -32,6 +33,13 @@ class Author:
         d['roles'] = self.roles
         d['affiliations'] = self.affiliations
         d['id'] = self.id
+        mesh_terms = []
+        for mesh, count in self.mesh_terms.items():
+            if mesh == '':
+                continue
+            mesh_terms.append({'term': mesh, 'count': count})
+        mesh_terms = sorted(mesh_terms, key=lambda mesh: mesh['count'], reverse=True)
+        d['mesh_terms'] = mesh_terms
         return d
 
 
@@ -173,6 +181,14 @@ def get_author(entry):
     author.roles = entry[4]
     author.affiliations = entry[5].split(';')
     author.id = entry[6]
+    mesh_terms = entry[7].split(';')
+    for mesh in mesh_terms:
+        try:
+            key = mesh.split(':')[0]
+            count = mesh.split(':')[1]
+            author.mesh_terms[key] = count
+        except:
+            continue
     return author
 
 
